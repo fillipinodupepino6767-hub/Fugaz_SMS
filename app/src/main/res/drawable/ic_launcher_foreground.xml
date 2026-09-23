@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Large teal speech bubble: designed for Android's adaptive-icon safe zone. -->
+    <path android:fillColor="#06AFC2"
+        android:pathData="M11,22C11,13 19,8 29,8L79,8C91,8 98,17 98,28L98,67C98,78 90,86 79,86L44,86L23,98L27,86C17,85 11,78 11,68Z"/>
+    <path android:fillColor="#087EAE"
+        android:pathData="M18,27C18,19 24,15 32,15L79,15C88,15 92,21 92,29L92,65C92,73 87,79 78,79L41,79L29,86L31,79C23,77 18,73 18,65Z"/>
+    <path android:fillColor="#0FD1CF"
+        android:pathData="M22,24C29,15 42,14 56,14L80,14C88,14 92,20 92,28L92,34C75,26 45,25 22,37Z"/>
+    <!-- Golden hourglass with broad strokes so it remains visible at launcher size. -->
+    <path android:fillColor="#FFD45E" android:pathData="M38,26L70,26L70,32L38,32Z"/>
+    <path android:fillColor="#FFD45E" android:pathData="M38,72L70,72L70,78L38,78Z"/>
+    <path android:fillColor="#F6A91C" android:pathData="M42,32L47,32C47,45 51,48 54,51C51,54 47,57 47,72L42,72C42,57 47,53 49,51C47,49 42,45 42,32Z"/>
+    <path android:fillColor="#F6A91C" android:pathData="M66,32L61,32C61,45 57,48 54,51C57,54 61,57 61,72L66,72C66,57 61,53 59,51C61,49 66,45 66,32Z"/>
+    <path android:fillColor="#FFE38A" android:pathData="M48,35L60,35C59,42 57,45 54,48C51,45 49,42 48,35Z"/>
+    <path android:fillColor="#FFE38A" android:pathData="M48,69L60,69C59,62 57,59 54,55C51,59 49,62 48,69Z"/>
+    <path android:fillColor="#FF7B5D" android:pathData="M25,47L29,47L29,51L25,51Z"/>
+    <path android:fillColor="#FF7B5D" android:pathData="M79,53L83,53L83,57L79,57Z"/>
+    <path android:fillColor="#67F2EB" android:pathData="M31,61L35,61L35,65L31,65Z"/>
+    <path android:fillColor="#67F2EB" android:pathData="M75,39L79,39L79,43L75,43Z"/>
+</vector>

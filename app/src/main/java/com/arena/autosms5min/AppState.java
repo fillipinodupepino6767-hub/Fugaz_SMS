@@ -9,6 +9,7 @@ final class AppState {
     private static final String KEY_VISIBLE_SINCE = "visible_since";
     private static final String KEY_DARK_MODE = "dark_mode";
     private static final String KEY_RETENTION_MS = "retention_ms";
+    private static final String KEY_OUTGOING_SUBSCRIPTION_ID = "outgoing_subscription_id";
     static final long ONE_MINUTE = 60_000L;
     static final long FIVE_MINUTES = 5L * ONE_MINUTE;
     static final long TEN_MINUTES = 10L * ONE_MINUTE;
@@ -59,6 +60,15 @@ final class AppState {
         if (millis == TEN_MINUTES) return "10 minutos";
         if (millis == THIRTY_MINUTES) return "30 minutos";
         return "Personalizado";
+    }
+
+    /** -1 means let Android use its currently selected/default cellular subscription. */
+    static int outgoingSubscriptionId(Context context) {
+        return prefs(context).getInt(KEY_OUTGOING_SUBSCRIPTION_ID, -1);
+    }
+
+    static void setOutgoingSubscriptionId(Context context, int subscriptionId) {
+        prefs(context).edit().putInt(KEY_OUTGOING_SUBSCRIPTION_ID, subscriptionId).apply();
     }
 
     private static SharedPreferences prefs(Context context) {

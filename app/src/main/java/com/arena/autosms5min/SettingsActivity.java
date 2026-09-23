@@ -93,6 +93,10 @@ public final class SettingsActivity extends Activity {
         blocklistButton.setOnClickListener(v -> showBlockedSenders());
         root.addView(blocklistButton);
 
+        Button simSettings = actionButton("SIM Y ENVÍO DE SMS");
+        simSettings.setOnClickListener(v -> startActivity(new Intent(this, SimSettingsActivity.class)));
+        root.addView(simSettings);
+
         Button cleanup = actionButton("ELIMINAR TODOS LOS SMS ANTERIORES");
         cleanup.setOnClickListener(v -> showLegacyCleanupConfirmation());
         root.addView(cleanup);
@@ -283,6 +287,7 @@ public final class SettingsActivity extends Activity {
                 .setMessage("• Los SMS nuevos se eliminan aproximadamente tras el tiempo elegido.\n\n"
                         + "• Puedes tocar Conservar desde la notificación o desde una conversación para evitar que un mensaje se borre.\n\n"
                         + "• Puedes bloquear remitentes desde una conversación. Sus próximos SMS se descartan localmente sin notificación.\n\n"
+                        + "• En SIM y envío puedes ver las SIM activas, el número que el operador exponga y elegir la SIM para SMS salientes.\n\n"
                         + "• Eliminar SMS anteriores solo borra SMS locales; no elimina respaldos, MMS, RCS, copias del operador ni del remitente.\n\n"
                         + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats RCS.")
                 .setPositiveButton("Entendido", null)

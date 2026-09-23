@@ -223,7 +223,11 @@ public final class ConversationActivity extends Activity {
                     .putExtra(SentSmsReceiver.EXTRA_BODY, body);
             PendingIntent sent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), callback,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            SmsManager.getDefault().sendTextMessage(address, null, body, sent, null);
+            int selectedSubscriptionId = AppState.outgoingSubscriptionId(this);
+            SmsManager manager = selectedSubscriptionId >= 0
+                    ? SmsManager.getSmsManagerForSubscriptionId(selectedSubscriptionId)
+                    : SmsManager.getDefault();
+            manager.sendTextMessage(address, null, body, sent, null);
             Toast.makeText(this, "Enviando SMS…", Toast.LENGTH_SHORT).show();
         } catch (SecurityException error) {
             Toast.makeText(this, "Falta el permiso para enviar SMS.", Toast.LENGTH_LONG).show();
