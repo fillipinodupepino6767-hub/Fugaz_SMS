@@ -34,6 +34,7 @@ public final class MainActivity extends Activity {
     private TextView note;
     private Button setupButton;
     private Button retentionButton;
+    private Button blocklistButton;
     private Button cleanupButton;
     private Button themeButton;
     private boolean dark;
@@ -107,6 +108,10 @@ public final class MainActivity extends Activity {
         retentionButton = new Button(this);
         retentionButton.setOnClickListener(v -> showRetentionPicker());
         root.addView(retentionButton);
+
+        blocklistButton = new Button(this);
+        blocklistButton.setOnClickListener(v -> showBlockedSenders());
+        root.addView(blocklistButton);
 
         cleanupButton = new Button(this);
         cleanupButton.setText("ELIMINAR TODOS LOS SMS ANTERIORES");
@@ -206,6 +211,37 @@ public final class MainActivity extends Activity {
                 .show();
     }
 
+    private void showBlockedSenders() {
+        List<String> senders = Blocklist.all(this);
+        if (senders.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Números bloqueados")
+                    .setMessage("No hay números bloqueados. Abre una conversación y usa Bloquear número para añadir uno.")
+                    .setPositiveButton("Cerrar", null)
+                    .show();
+            return;
+        }
+        String[] items = senders.toArray(new String[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Números bloqueados")
+                .setItems(items, (dialog, which) -> confirmUnblock(items[which]))
+                .setNegativeButton("Cerrar", null)
+                .show();
+    }
+
+    private void confirmUnblock(String sender) {
+        new AlertDialog.Builder(this)
+                .setTitle("Desbloquear " + sender)
+                .setMessage("Los próximos SMS de este remitente volverán a recibirse normalmente.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Desbloquear", (dialog, which) -> {
+                    Blocklist.unblock(this, sender);
+                    Toast.makeText(this, sender + " desbloqueado.", Toast.LENGTH_SHORT).show();
+                    refresh();
+                })
+                .show();
+    }
+
     private void showLegacyCleanupConfirmation() {
         if (!isDefaultSmsApp()) {
             Toast.makeText(this, "Primero debes configurar esta app como aplicación SMS predeterminada.", Toast.LENGTH_LONG).show();
@@ -256,6 +292,7 @@ public final class MainActivity extends Activity {
         String chosen = AppState.retentionLabel(this);
         note.setText("Los SMS nuevos se borran aproximadamente después del tiempo elegido. Usa Conservar para evitar el borrado de un mensaje concreto.");
         retentionButton.setText("TIEMPO DE BORRADO: " + chosen.toUpperCase());
+        blocklistButton.setText("NÚMEROS BLOQUEADOS: " + Blocklist.count(this));
     }
 
     private void refresh() {

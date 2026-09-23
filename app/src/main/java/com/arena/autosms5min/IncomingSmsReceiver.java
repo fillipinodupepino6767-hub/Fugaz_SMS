@@ -17,6 +17,13 @@ public final class IncomingSmsReceiver extends BroadcastReceiver {
         if (parts == null || parts.length == 0) return;
 
         String address = parts[0].getDisplayOriginatingAddress();
+        // Blocked senders are deliberately not written to Android's local SMS provider.
+        // This prevents both an inbox entry and a notification for future messages from that sender.
+        if (Blocklist.isBlocked(context, address)) {
+            setResultCode(Activity.RESULT_OK);
+            return;
+        }
+
         StringBuilder fullBody = new StringBuilder();
         long timestamp = parts[0].getTimestampMillis();
         for (SmsMessage part : parts) fullBody.append(part.getMessageBody());

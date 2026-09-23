@@ -71,6 +71,18 @@ public final class ConversationActivity extends Activity {
         heading.setTextColor(ThemeColors.primaryText(dark));
         root.addView(heading);
 
+        Button blockSender = new Button(this);
+        boolean currentlyBlocked = Blocklist.isBlocked(this, address);
+        blockSender.setText(currentlyBlocked ? "DESBLOQUEAR NÚMERO" : "BLOQUEAR NÚMERO");
+        blockSender.setOnClickListener(v -> {
+            if (Blocklist.isBlocked(this, address)) {
+                confirmUnblockSender();
+            } else {
+                confirmBlockSender();
+            }
+        });
+        root.addView(blockSender);
+
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(ThemeColors.background(dark));
         messages = new LinearLayout(this);
@@ -150,6 +162,32 @@ public final class ConversationActivity extends Activity {
             }
             messages.addView(card);
         }
+    }
+
+    private void confirmBlockSender() {
+        new AlertDialog.Builder(this)
+                .setTitle("Bloquear " + address)
+                .setMessage("Los próximos SMS de este remitente se descartarán inmediatamente, sin notificación y sin aparecer en la bandeja. Esto no bloquea llamadas.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Bloquear", (dialog, which) -> {
+                    Blocklist.block(this, address);
+                    Toast.makeText(this, address + " bloqueado para SMS.", Toast.LENGTH_LONG).show();
+                    recreate();
+                })
+                .show();
+    }
+
+    private void confirmUnblockSender() {
+        new AlertDialog.Builder(this)
+                .setTitle("Desbloquear " + address)
+                .setMessage("Los próximos SMS de este remitente volverán a recibirse normalmente.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Desbloquear", (dialog, which) -> {
+                    Blocklist.unblock(this, address);
+                    Toast.makeText(this, address + " desbloqueado.", Toast.LENGTH_SHORT).show();
+                    recreate();
+                })
+                .show();
     }
 
     private void keepMessage(long smsId) {
