@@ -19,6 +19,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ public final class MainActivity extends Activity {
     private TextView note;
     private Button setupButton;
     private Button retentionButton;
+    private Button cleanupButton;
     private Button themeButton;
     private boolean dark;
     private final Handler countdownHandler = new Handler(Looper.getMainLooper());
@@ -105,6 +107,11 @@ public final class MainActivity extends Activity {
         retentionButton = new Button(this);
         retentionButton.setOnClickListener(v -> showRetentionPicker());
         root.addView(retentionButton);
+
+        cleanupButton = new Button(this);
+        cleanupButton.setText("ELIMINAR TODOS LOS SMS ANTERIORES");
+        cleanupButton.setOnClickListener(v -> showLegacyCleanupConfirmation());
+        root.addView(cleanupButton);
 
         themeButton = new Button(this);
         themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
@@ -196,6 +203,39 @@ public final class MainActivity extends Activity {
                     refresh();
                 })
                 .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void showLegacyCleanupConfirmation() {
+        if (!isDefaultSmsApp()) {
+            Toast.makeText(this, "Primero debes configurar esta app como aplicación SMS predeterminada.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        long cutoff = AppState.visibleSince(this);
+        int count = SmsStore.countMessagesBefore(this, cutoff);
+        if (count == 0) {
+            Toast.makeText(this, "No hay SMS anteriores para eliminar.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Eliminar " + count + " SMS anteriores")
+                .setMessage("Esto borrará de la base local de Android todos los SMS anteriores al momento en que empezaste a usar esta app. "
+                        + "Incluye mensajes recibidos, enviados y borradores antiguos. No elimina copias de seguridad, MMS ni chats RCS.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Continuar", (dialog, which) -> showFinalLegacyCleanupConfirmation(count, cutoff))
+                .show();
+    }
+
+    private void showFinalLegacyCleanupConfirmation(int count, long cutoff) {
+        new AlertDialog.Builder(this)
+                .setTitle("Confirmación final")
+                .setMessage("Vas a eliminar " + count + " SMS locales antiguos. Esta acción no se puede deshacer. ¿Deseas eliminarlos ahora?")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Eliminar " + count + " SMS", (dialog, which) -> {
+                    int deleted = SmsStore.deleteMessagesBefore(this, cutoff);
+                    Toast.makeText(this, deleted + " SMS antiguos eliminados.", Toast.LENGTH_LONG).show();
+                    refresh();
+                })
                 .show();
     }
 

@@ -37,6 +37,29 @@ final class SmsStore {
         return context.getContentResolver().delete(uri, null, null);
     }
 
+    static int countMessagesBefore(Context context, long cutoffMillis) {
+        try (Cursor cursor = context.getContentResolver().query(
+                Telephony.Sms.CONTENT_URI,
+                new String[]{android.provider.BaseColumns._ID},
+                Telephony.TextBasedSmsColumns.DATE + "<?",
+                new String[]{Long.toString(cutoffMillis)}, null)) {
+            return cursor == null ? 0 : cursor.getCount();
+        } catch (SecurityException ignored) {
+            return 0;
+        }
+    }
+
+    /** Deletes every local SMS record older than the supplied cutoff. This does not affect MMS/RCS. */
+    static int deleteMessagesBefore(Context context, long cutoffMillis) {
+        try {
+            return context.getContentResolver().delete(Telephony.Sms.CONTENT_URI,
+                    Telephony.TextBasedSmsColumns.DATE + "<?",
+                    new String[]{Long.toString(cutoffMillis)});
+        } catch (SecurityException ignored) {
+            return 0;
+        }
+    }
+
     /** Only show messages created after this app began managing the SMS role. */
     static List<SmsItem> allMessages(Context context) {
         long visibleSince = AppState.visibleSince(context);
