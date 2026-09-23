@@ -37,12 +37,21 @@ final class SmsStore {
         return context.getContentResolver().delete(uri, null, null);
     }
 
+    /** Only show messages created after this app began managing the SMS role. */
     static List<SmsItem> allMessages(Context context) {
-        return read(context, null, null, Telephony.TextBasedSmsColumns.DATE + " DESC");
+        long visibleSince = AppState.visibleSince(context);
+        return read(context,
+                Telephony.TextBasedSmsColumns.DATE + ">=?",
+                new String[]{Long.toString(visibleSince)},
+                Telephony.TextBasedSmsColumns.DATE + " DESC");
     }
 
     static List<SmsItem> messagesForAddress(Context context, String address) {
-        return read(context, Telephony.TextBasedSmsColumns.ADDRESS + "=?", new String[]{address},
+        long visibleSince = AppState.visibleSince(context);
+        return read(context,
+                Telephony.TextBasedSmsColumns.ADDRESS + "=? AND "
+                        + Telephony.TextBasedSmsColumns.DATE + ">=?",
+                new String[]{address, Long.toString(visibleSince)},
                 Telephony.TextBasedSmsColumns.DATE + " ASC");
     }
 
