@@ -129,7 +129,7 @@ public final class ConversationActivity extends Activity {
                 long dueAt = DeleteRegistry.dueAt(this, item.id);
                 if (dueAt > 0L) {
                     TextView timer = new TextView(this);
-                    timer.setText("Se elimina en " + CountdownFormatter.formatRemaining(dueAt));
+                    timer.setText("Se elimina aproximadamente en " + CountdownFormatter.formatRemaining(dueAt));
                     timer.setTextColor(ThemeColors.accent(dark));
                     timer.setPadding(0, dp(8), 0, 0);
                     card.addView(timer);

@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  build-debug-apk:
-    name: Generar APK de prueba
+  build-release-apk:
+    name: Generar APK firmada
     runs-on: ubuntu-latest
 
     steps:
@@ -24,20 +24,33 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      # The project intentionally has no checked-in Gradle wrapper. This action
-      # downloads Gradle 8.7 temporarily inside GitHub's runner.
       - name: Preparar Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      - name: Compilar APK de depuración
-        run: gradle :app:assembleDebug --no-daemon
+      - name: Restaurar clave privada de firma
+        env:
+          SMS_KEYSTORE_BASE64: ${{ secrets.SMS_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$SMS_KEYSTORE_BASE64" ]; then
+            echo "Falta el secreto SMS_KEYSTORE_BASE64."
+            exit 1
+          fi
+          echo "$SMS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sms5min-release.jks"
+
+      - name: Compilar APK de lanzamiento
+        env:
+          SMS_KEYSTORE_PATH: ${{ runner.temp }}/sms5min-release.jks
+          SMS_KEYSTORE_PASSWORD: ${{ secrets.SMS_KEYSTORE_PASSWORD }}
+          SMS_KEY_ALIAS: ${{ secrets.SMS_KEY_ALIAS }}
+          SMS_KEY_PASSWORD: ${{ secrets.SMS_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --no-daemon
 
       - name: Guardar el APK para descargarlo
         uses: actions/upload-artifact@v4
         with:
-          name: SMS-5-minutos-debug-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: SMS-5-minutos-release-APK
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14

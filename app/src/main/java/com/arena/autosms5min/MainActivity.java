@@ -2,10 +2,10 @@ package com.arena.autosms5min;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.role.RoleManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,17 +29,18 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_PERMISSIONS = 401;
     private final List<SmsStore.SmsItem> shownItems = new ArrayList<>();
     private ArrayAdapter<String> adapter;
-    private TextView title;
     private TextView status;
     private TextView note;
     private Button setupButton;
+    private Button retentionButton;
     private Button themeButton;
     private boolean dark;
     private final Handler countdownHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownTicker = new Runnable() {
         @Override public void run() {
             refresh();
-            countdownHandler.postDelayed(this, 1_000L);
+            // The conversation view refreshes per second; the inbox only needs a lighter update.
+            countdownHandler.postDelayed(this, 30_000L);
         }
     };
 
@@ -49,8 +50,7 @@ public final class MainActivity extends Activity {
         dark = AppState.isDarkMode(this);
         ThemeColors.applySystemBars(this, dark);
         buildUi();
-        requestRoleAndPermissionsIfNeeded();
-        handleComposeIntent(getIntent());
+        ensureSmsPermissionsIfDefault();
     }
 
     @Override
@@ -58,7 +58,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         refresh();
         countdownHandler.removeCallbacks(countdownTicker);
-        countdownHandler.postDelayed(countdownTicker, 1_000L);
+        countdownHandler.postDelayed(countdownTicker, 30_000L);
     }
 
     @Override
@@ -80,7 +80,7 @@ public final class MainActivity extends Activity {
         root.setPadding(dp(16), dp(16), dp(16), dp(8));
         root.setBackgroundColor(ThemeColors.background(dark));
 
-        title = new TextView(this);
+        TextView title = new TextView(this);
         title.setText("SMS 5 minutos");
         title.setTextSize(24);
         title.setTextColor(ThemeColors.primaryText(dark));
@@ -91,17 +91,20 @@ public final class MainActivity extends Activity {
         status.setTextColor(ThemeColors.secondaryText(dark));
         root.addView(status);
 
-        // This button disappears as soon as Android confirms that this is the default SMS app.
+        // This appears only while Android has another default SMS app.
         setupButton = new Button(this);
         setupButton.setText("CONFIGURAR COMO APP SMS PREDETERMINADA");
-        setupButton.setOnClickListener(v -> requestRoleAndPermissionsIfNeeded());
+        setupButton.setOnClickListener(v -> showDefaultSmsWarning());
         root.addView(setupButton);
 
         note = new TextView(this);
-        note.setText("Cada SMS entrante se elimina cinco minutos después de recibirse. Toca un SMS y usa Conservar si no quieres que se borre.");
         note.setPadding(0, dp(4), 0, dp(4));
         note.setTextColor(ThemeColors.secondaryText(dark));
         root.addView(note);
+
+        retentionButton = new Button(this);
+        retentionButton.setOnClickListener(v -> showRetentionPicker());
+        root.addView(retentionButton);
 
         themeButton = new Button(this);
         themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
@@ -135,19 +138,36 @@ public final class MainActivity extends Activity {
         setContentView(root);
     }
 
-    private void requestRoleAndPermissionsIfNeeded() {
-        if (!isDefaultSmsApp()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                RoleManager roles = getSystemService(RoleManager.class);
-                if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_SMS)) {
-                    startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_SMS), REQUEST_SMS_ROLE);
-                }
-            } else {
-                Intent change = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-                change.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getPackageName());
-                startActivityForResult(change, REQUEST_SMS_ROLE);
+    private void showDefaultSmsWarning() {
+        new AlertDialog.Builder(this)
+                .setTitle("Usar SMS 5 minutos como app predeterminada")
+                .setMessage("Esta app debe ser la aplicación SMS predeterminada para recibir y administrar SMS. "
+                        + "Los SMS nuevos se eliminarán según el tiempo elegido; puedes conservarlos desde la notificación o conversación. "
+                        + "Esta versión beta gestiona SMS de texto, no MMS ni chats RCS de Google Mensajes.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Continuar", (dialog, which) -> requestSmsRole())
+                .show();
+    }
+
+    private void requestSmsRole() {
+        if (isDefaultSmsApp()) {
+            ensureSmsPermissionsIfDefault();
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            RoleManager roles = getSystemService(RoleManager.class);
+            if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_SMS)) {
+                startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_SMS), REQUEST_SMS_ROLE);
             }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+        } else {
+            Intent change = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
+            change.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getPackageName());
+            startActivityForResult(change, REQUEST_SMS_ROLE);
+        }
+    }
+
+    private void ensureSmsPermissionsIfDefault() {
+        if (isDefaultSmsApp() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{
                     Manifest.permission.RECEIVE_SMS,
@@ -155,7 +175,28 @@ public final class MainActivity extends Activity {
                     Manifest.permission.SEND_SMS
             }, REQUEST_PERMISSIONS);
         }
-        updateStatus();
+    }
+
+    private void showRetentionPicker() {
+        final long[] values = {
+                AppState.ONE_MINUTE, AppState.FIVE_MINUTES, AppState.TEN_MINUTES,
+                AppState.THIRTY_MINUTES, AppState.NEVER
+        };
+        final String[] labels = {
+                "1 minuto", "5 minutos", "10 minutos", "30 minutos", "Nunca automáticamente"
+        };
+        long current = AppState.retentionMillis(this);
+        int checked = 1;
+        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
+        new AlertDialog.Builder(this)
+                .setTitle("Tiempo para borrar SMS nuevos")
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    AppState.setRetentionMillis(this, values[which]);
+                    dialog.dismiss();
+                    refresh();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     private boolean isDefaultSmsApp() {
@@ -172,6 +213,9 @@ public final class MainActivity extends Activity {
             status.setText("Estado: falta elegir esta app como aplicación SMS predeterminada.");
             setupButton.setVisibility(View.VISIBLE);
         }
+        String chosen = AppState.retentionLabel(this);
+        note.setText("Los SMS nuevos se borran aproximadamente después del tiempo elegido. Usa Conservar para evitar el borrado de un mensaje concreto.");
+        retentionButton.setText("TIEMPO DE BORRADO: " + chosen.toUpperCase());
     }
 
     private void refresh() {
@@ -185,7 +229,7 @@ public final class MainActivity extends Activity {
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
             long dueAt = DeleteRegistry.dueAt(this, item.id);
             String countdown = item.type == SmsStore.TYPE_INBOX && dueAt > 0L
-                    ? "\nSe elimina en " + CountdownFormatter.formatRemaining(dueAt)
+                    ? "\nSe elimina aproximadamente en " + CountdownFormatter.formatRemaining(dueAt)
                     : "";
             labels.add(direction + item.address + "\n" + item.body + "\n"
                     + format.format(item.date) + countdown);

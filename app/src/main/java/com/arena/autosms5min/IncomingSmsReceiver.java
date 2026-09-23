@@ -24,9 +24,12 @@ public final class IncomingSmsReceiver extends BroadcastReceiver {
 
         long messageId = SmsStore.insertIncoming(context, address, fullBody.toString(), timestamp);
         if (messageId > 0) {
-            long dueAt = System.currentTimeMillis() + DeleteScheduler.RETENTION_MS;
-            DeleteRegistry.add(context, messageId, dueAt);
-            DeleteScheduler.schedule(context, messageId, dueAt);
+            long retention = AppState.retentionMillis(context);
+            if (retention != AppState.NEVER) {
+                long dueAt = System.currentTimeMillis() + retention;
+                DeleteRegistry.add(context, messageId, dueAt);
+                DeleteScheduler.schedule(context, messageId, dueAt);
+            }
             NotificationHelper.showIncoming(context, messageId, address, fullBody.toString());
         }
         setResultCode(Activity.RESULT_OK);

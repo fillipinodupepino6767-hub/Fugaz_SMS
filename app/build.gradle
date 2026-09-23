@@ -2,15 +2,41 @@ plugins {
     id 'com.android.application'
 }
 
+// These values are supplied only by GitHub Actions secrets for release builds.
+def releaseStorePath = System.getenv('SMS_KEYSTORE_PATH')
+def releaseStorePassword = System.getenv('SMS_KEYSTORE_PASSWORD')
+def releaseKeyAlias = System.getenv('SMS_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('SMS_KEY_PASSWORD')
+def hasReleaseSigning = releaseStorePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace 'com.arena.autosms5min'
     compileSdk 35
 
     defaultConfig {
+        // Keep this fixed. Changing it would make Android treat updates as a different app.
         applicationId 'com.arena.autosms5min'
         minSdk 23
         targetSdk 30
-        versionCode 4
-        versionName '0.4.0'
+        versionCode 5
+        versionName '0.5.0'
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStorePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (hasReleaseSigning) signingConfig signingConfigs.release
+        }
     }
 }

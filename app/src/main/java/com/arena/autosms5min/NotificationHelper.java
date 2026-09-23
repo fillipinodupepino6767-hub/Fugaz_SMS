@@ -20,6 +20,11 @@ final class NotificationHelper {
                 .putExtra(ConversationActivity.EXTRA_ADDRESS, address);
         PendingIntent contentIntent = PendingIntent.getActivity(context, notificationId(smsId), open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent keep = new Intent(context, KeepSmsReceiver.class)
+                .setAction(KeepSmsReceiver.ACTION_KEEP)
+                .putExtra(KeepSmsReceiver.EXTRA_SMS_ID, smsId);
+        PendingIntent keepIntent = PendingIntent.getBroadcast(context, notificationId(smsId), keep,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         android.app.Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? new android.app.Notification.Builder(context, CHANNEL_ID)
                 : new android.app.Notification.Builder(context);
@@ -28,6 +33,8 @@ final class NotificationHelper {
                 .setContentText(body)
                 .setStyle(new android.app.Notification.BigTextStyle().bigText(body))
                 .setContentIntent(contentIntent)
+                .addAction(new android.app.Notification.Action.Builder(
+                        android.R.drawable.ic_menu_save, "Conservar", keepIntent).build())
                 .setAutoCancel(true)
                 .setWhen(System.currentTimeMillis());
         manager.notify(notificationId(smsId), builder.build());
