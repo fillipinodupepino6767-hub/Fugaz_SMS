@@ -2,8 +2,6 @@ package com.arena.autosms5min;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.role.RoleManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -11,39 +9,33 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Telephony;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Main inbox: intentionally uncluttered; controls live in SettingsActivity. */
 public final class MainActivity extends Activity {
-    private static final int REQUEST_SMS_ROLE = 400;
     private static final int REQUEST_PERMISSIONS = 401;
     private final List<SmsStore.SmsItem> shownItems = new ArrayList<>();
     private ArrayAdapter<String> adapter;
-    private TextView status;
-    private TextView note;
-    private Button setupButton;
-    private Button retentionButton;
-    private Button blocklistButton;
-    private Button cleanupButton;
-    private Button themeButton;
+    private ListView list;
+    private LinearLayout emptyState;
     private boolean dark;
-    private final Handler countdownHandler = new Handler(Looper.getMainLooper());
-    private final Runnable countdownTicker = new Runnable() {
+    private final Handler refreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable refreshTicker = new Runnable() {
         @Override public void run() {
             refresh();
-            // The conversation view refreshes per second; the inbox only needs a lighter update.
-            countdownHandler.postDelayed(this, 30_000L);
+            refreshHandler.postDelayed(this, 30_000L);
         }
     };
 
@@ -54,19 +46,24 @@ public final class MainActivity extends Activity {
         ThemeColors.applySystemBars(this, dark);
         buildUi();
         ensureSmsPermissionsIfDefault();
+        handleComposeIntent(getIntent());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (dark != AppState.isDarkMode(this)) {
+            recreate();
+            return;
+        }
         refresh();
-        countdownHandler.removeCallbacks(countdownTicker);
-        countdownHandler.postDelayed(countdownTicker, 30_000L);
+        refreshHandler.removeCallbacks(refreshTicker);
+        refreshHandler.postDelayed(refreshTicker, 30_000L);
     }
 
     @Override
     protected void onPause() {
-        countdownHandler.removeCallbacks(countdownTicker);
+        refreshHandler.removeCallbacks(refreshTicker);
         super.onPause();
     }
 
@@ -80,60 +77,49 @@ public final class MainActivity extends Activity {
     private void buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(16), dp(16), dp(8));
         root.setBackgroundColor(ThemeColors.background(dark));
 
+        LinearLayout toolbar = new LinearLayout(this);
+        toolbar.setOrientation(LinearLayout.HORIZONTAL);
+        toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar.setPadding(dp(8), dp(10), dp(16), dp(8));
+        toolbar.setBackgroundColor(ThemeColors.background(dark));
+
+        Button settings = new Button(this);
+        settings.setText("⚙");
+        settings.setTextSize(25);
+        settings.setTextColor(ThemeColors.accent(dark));
+        settings.setContentDescription("Configuración");
+        settings.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        settings.setMinWidth(dp(52));
+        settings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        toolbar.addView(settings, new LinearLayout.LayoutParams(dp(52), dp(52)));
+
+        LinearLayout titles = new LinearLayout(this);
+        titles.setOrientation(LinearLayout.VERTICAL);
         TextView title = new TextView(this);
         title.setText("SMS 5 minutos");
-        title.setTextSize(24);
         title.setTextColor(ThemeColors.primaryText(dark));
-        root.addView(title);
+        title.setTextSize(23);
+        TextView subtitle = new TextView(this);
+        subtitle.setText("Bandeja temporal y privada");
+        subtitle.setTextColor(ThemeColors.secondaryText(dark));
+        subtitle.setTextSize(13);
+        titles.addView(title);
+        titles.addView(subtitle);
+        toolbar.addView(titles, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        root.addView(toolbar);
 
-        status = new TextView(this);
-        status.setPadding(0, dp(8), 0, dp(8));
-        status.setTextColor(ThemeColors.secondaryText(dark));
-        root.addView(status);
-
-        // This appears only while Android has another default SMS app.
-        setupButton = new Button(this);
-        setupButton.setText("CONFIGURAR COMO APP SMS PREDETERMINADA");
-        setupButton.setOnClickListener(v -> showDefaultSmsWarning());
-        root.addView(setupButton);
-
-        note = new TextView(this);
-        note.setPadding(0, dp(4), 0, dp(4));
-        note.setTextColor(ThemeColors.secondaryText(dark));
-        root.addView(note);
-
-        retentionButton = new Button(this);
-        retentionButton.setOnClickListener(v -> showRetentionPicker());
-        root.addView(retentionButton);
-
-        blocklistButton = new Button(this);
-        blocklistButton.setOnClickListener(v -> showBlockedSenders());
-        root.addView(blocklistButton);
-
-        cleanupButton = new Button(this);
-        cleanupButton.setText("ELIMINAR TODOS LOS SMS ANTERIORES");
-        cleanupButton.setOnClickListener(v -> showLegacyCleanupConfirmation());
-        root.addView(cleanupButton);
-
-        themeButton = new Button(this);
-        themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
-        themeButton.setOnClickListener(v -> {
-            AppState.setDarkMode(this, !dark);
-            recreate();
-        });
-        root.addView(themeButton);
-
-        ListView list = new ListView(this);
+        list = new ListView(this);
+        list.setDividerHeight(dp(1));
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<>()) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 TextView row = (TextView) super.getView(position, convertView, parent);
                 row.setTextColor(ThemeColors.primaryText(dark));
                 row.setTextSize(16);
-                row.setPadding(dp(12), dp(12), dp(12), dp(12));
+                row.setPadding(dp(16), dp(14), dp(16), dp(14));
                 row.setBackgroundColor(ThemeColors.background(dark));
                 return row;
             }
@@ -147,39 +133,42 @@ public final class MainActivity extends Activity {
         });
         root.addView(list, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        emptyState = new LinearLayout(this);
+        emptyState.setOrientation(LinearLayout.VERTICAL);
+        emptyState.setGravity(Gravity.CENTER);
+        emptyState.setPadding(dp(32), dp(20), dp(32), dp(48));
+        emptyState.setBackgroundColor(ThemeColors.background(dark));
+
+        ImageView art = new ImageView(this);
+        art.setImageResource(com.arena.autosms5min.R.drawable.empty_inbox);
+        art.setContentDescription("Bandeja limpia");
+        art.setAdjustViewBounds(true);
+        emptyState.addView(art, new LinearLayout.LayoutParams(dp(210), dp(210)));
+
+        TextView emptyTitle = new TextView(this);
+        emptyTitle.setText("Sin mensajes");
+        emptyTitle.setTextColor(ThemeColors.primaryText(dark));
+        emptyTitle.setTextSize(24);
+        emptyTitle.setGravity(Gravity.CENTER);
+        emptyTitle.setPadding(0, dp(12), 0, dp(4));
+        emptyState.addView(emptyTitle);
+
+        TextView emptyBody = new TextView(this);
+        emptyBody.setText("Todo despejado y limpio ✨");
+        emptyBody.setTextColor(ThemeColors.secondaryText(dark));
+        emptyBody.setTextSize(16);
+        emptyBody.setGravity(Gravity.CENTER);
+        emptyState.addView(emptyBody);
+        root.addView(emptyState, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
         setContentView(root);
     }
 
-    private void showDefaultSmsWarning() {
-        new AlertDialog.Builder(this)
-                .setTitle("Usar SMS 5 minutos como app predeterminada")
-                .setMessage("Esta app debe ser la aplicación SMS predeterminada para recibir y administrar SMS. "
-                        + "Los SMS nuevos se eliminarán según el tiempo elegido; puedes conservarlos desde la notificación o conversación. "
-                        + "Esta versión beta gestiona SMS de texto, no MMS ni chats RCS de Google Mensajes.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Continuar", (dialog, which) -> requestSmsRole())
-                .show();
-    }
-
-    private void requestSmsRole() {
-        if (isDefaultSmsApp()) {
-            ensureSmsPermissionsIfDefault();
-            return;
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            RoleManager roles = getSystemService(RoleManager.class);
-            if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_SMS)) {
-                startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_SMS), REQUEST_SMS_ROLE);
-            }
-        } else {
-            Intent change = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-            change.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getPackageName());
-            startActivityForResult(change, REQUEST_SMS_ROLE);
-        }
-    }
-
     private void ensureSmsPermissionsIfDefault() {
-        if (isDefaultSmsApp() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+        if (getPackageName().equals(android.provider.Telephony.Sms.getDefaultSmsPackage(this))
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{
                     Manifest.permission.RECEIVE_SMS,
@@ -189,114 +178,7 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void showRetentionPicker() {
-        final long[] values = {
-                AppState.ONE_MINUTE, AppState.FIVE_MINUTES, AppState.TEN_MINUTES,
-                AppState.THIRTY_MINUTES, AppState.NEVER
-        };
-        final String[] labels = {
-                "1 minuto", "5 minutos", "10 minutos", "30 minutos", "Nunca automáticamente"
-        };
-        long current = AppState.retentionMillis(this);
-        int checked = 1;
-        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
-        new AlertDialog.Builder(this)
-                .setTitle("Tiempo para borrar SMS nuevos")
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    AppState.setRetentionMillis(this, values[which]);
-                    dialog.dismiss();
-                    refresh();
-                })
-                .setNegativeButton("Cancelar", null)
-                .show();
-    }
-
-    private void showBlockedSenders() {
-        List<String> senders = Blocklist.all(this);
-        if (senders.isEmpty()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Números bloqueados")
-                    .setMessage("No hay números bloqueados. Abre una conversación y usa Bloquear número para añadir uno.")
-                    .setPositiveButton("Cerrar", null)
-                    .show();
-            return;
-        }
-        String[] items = senders.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Números bloqueados")
-                .setItems(items, (dialog, which) -> confirmUnblock(items[which]))
-                .setNegativeButton("Cerrar", null)
-                .show();
-    }
-
-    private void confirmUnblock(String sender) {
-        new AlertDialog.Builder(this)
-                .setTitle("Desbloquear " + sender)
-                .setMessage("Los próximos SMS de este remitente volverán a recibirse normalmente.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Desbloquear", (dialog, which) -> {
-                    Blocklist.unblock(this, sender);
-                    Toast.makeText(this, sender + " desbloqueado.", Toast.LENGTH_SHORT).show();
-                    refresh();
-                })
-                .show();
-    }
-
-    private void showLegacyCleanupConfirmation() {
-        if (!isDefaultSmsApp()) {
-            Toast.makeText(this, "Primero debes configurar esta app como aplicación SMS predeterminada.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        long cutoff = AppState.visibleSince(this);
-        int count = SmsStore.countMessagesBefore(this, cutoff);
-        if (count == 0) {
-            Toast.makeText(this, "No hay SMS anteriores para eliminar.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("Eliminar " + count + " SMS anteriores")
-                .setMessage("Esto borrará de la base local de Android todos los SMS anteriores al momento en que empezaste a usar esta app. "
-                        + "Incluye mensajes recibidos, enviados y borradores antiguos. No elimina copias de seguridad, MMS ni chats RCS.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Continuar", (dialog, which) -> showFinalLegacyCleanupConfirmation(count, cutoff))
-                .show();
-    }
-
-    private void showFinalLegacyCleanupConfirmation(int count, long cutoff) {
-        new AlertDialog.Builder(this)
-                .setTitle("Confirmación final")
-                .setMessage("Vas a eliminar " + count + " SMS locales antiguos. Esta acción no se puede deshacer. ¿Deseas eliminarlos ahora?")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Eliminar " + count + " SMS", (dialog, which) -> {
-                    int deleted = SmsStore.deleteMessagesBefore(this, cutoff);
-                    Toast.makeText(this, deleted + " SMS antiguos eliminados.", Toast.LENGTH_LONG).show();
-                    refresh();
-                })
-                .show();
-    }
-
-    private boolean isDefaultSmsApp() {
-        return getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(this));
-    }
-
-    private void updateStatus() {
-        if (status == null) return;
-        boolean isDefault = isDefaultSmsApp();
-        if (isDefault) {
-            status.setText("Estado: app SMS predeterminada. El borrado automático está activo.");
-            setupButton.setVisibility(View.GONE);
-        } else {
-            status.setText("Estado: falta elegir esta app como aplicación SMS predeterminada.");
-            setupButton.setVisibility(View.VISIBLE);
-        }
-        String chosen = AppState.retentionLabel(this);
-        note.setText("Los SMS nuevos se borran aproximadamente después del tiempo elegido. Usa Conservar para evitar el borrado de un mensaje concreto.");
-        retentionButton.setText("TIEMPO DE BORRADO: " + chosen.toUpperCase());
-        blocklistButton.setText("NÚMEROS BLOQUEADOS: " + Blocklist.count(this));
-    }
-
     private void refresh() {
-        updateStatus();
         List<SmsStore.SmsItem> all = SmsStore.allMessages(this);
         shownItems.clear();
         shownItems.addAll(all);
@@ -314,6 +196,9 @@ public final class MainActivity extends Activity {
         adapter.clear();
         adapter.addAll(labels);
         adapter.notifyDataSetChanged();
+        boolean hasMessages = !all.isEmpty();
+        list.setVisibility(hasMessages ? View.VISIBLE : View.GONE);
+        emptyState.setVisibility(hasMessages ? View.GONE : View.VISIBLE);
     }
 
     private void handleComposeIntent(Intent intent) {
