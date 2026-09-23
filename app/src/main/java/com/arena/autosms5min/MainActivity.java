@@ -5,12 +5,13 @@ import android.app.Activity;
 import android.app.role.RoleManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Telephony;
-import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -26,11 +27,18 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_PERMISSIONS = 401;
     private final List<SmsStore.SmsItem> shownItems = new ArrayList<>();
     private ArrayAdapter<String> adapter;
+    private TextView title;
     private TextView status;
+    private TextView note;
+    private Button setupButton;
+    private Button themeButton;
+    private boolean dark;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        dark = AppState.isDarkMode(this);
+        ThemeColors.applySystemBars(this, dark);
         buildUi();
         requestRoleAndPermissionsIfNeeded();
         handleComposeIntent(getIntent());
@@ -53,29 +61,51 @@ public final class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(16), dp(16), dp(16), dp(8));
+        root.setBackgroundColor(ThemeColors.background(dark));
 
-        TextView title = new TextView(this);
+        title = new TextView(this);
         title.setText("SMS 5 minutos");
         title.setTextSize(24);
+        title.setTextColor(ThemeColors.primaryText(dark));
         root.addView(title);
 
         status = new TextView(this);
         status.setPadding(0, dp(8), 0, dp(8));
+        status.setTextColor(ThemeColors.secondaryText(dark));
         root.addView(status);
 
-        Button setup = new Button(this);
-        setup.setText("Configurar como app SMS predeterminada");
-        setup.setOnClickListener(v -> requestRoleAndPermissionsIfNeeded());
-        root.addView(setup);
+        // This button disappears as soon as Android confirms that this is the default SMS app.
+        setupButton = new Button(this);
+        setupButton.setText("CONFIGURAR COMO APP SMS PREDETERMINADA");
+        setupButton.setOnClickListener(v -> requestRoleAndPermissionsIfNeeded());
+        root.addView(setupButton);
 
-        TextView note = new TextView(this);
-        note.setText("Cada SMS entrante se elimina cinco minutos después de recibirse. Los SMS enviados no se eliminan.");
-        note.setPadding(0, dp(4), 0, dp(8));
+        note = new TextView(this);
+        note.setText("Cada SMS entrante se elimina cinco minutos después de recibirse. Toca un SMS y usa Conservar si no quieres que se borre.");
+        note.setPadding(0, dp(4), 0, dp(4));
+        note.setTextColor(ThemeColors.secondaryText(dark));
         root.addView(note);
 
+        themeButton = new Button(this);
+        themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
+        themeButton.setOnClickListener(v -> {
+            AppState.setDarkMode(this, !dark);
+            recreate();
+        });
+        root.addView(themeButton);
+
         ListView list = new ListView(this);
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_2,
-                android.R.id.text1, new ArrayList<>());
+        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<>()) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                TextView row = (TextView) super.getView(position, convertView, parent);
+                row.setTextColor(ThemeColors.primaryText(dark));
+                row.setTextSize(16);
+                row.setPadding(dp(12), dp(12), dp(12), dp(12));
+                row.setBackgroundColor(ThemeColors.background(dark));
+                return row;
+            }
+        };
         list.setAdapter(adapter);
         list.setOnItemClickListener((parent, view, position, id) -> {
             SmsStore.SmsItem item = shownItems.get(position);
@@ -117,10 +147,13 @@ public final class MainActivity extends Activity {
 
     private void updateStatus() {
         if (status == null) return;
-        if (isDefaultSmsApp()) {
+        boolean isDefault = isDefaultSmsApp();
+        if (isDefault) {
             status.setText("Estado: app SMS predeterminada. El borrado automático está activo.");
+            setupButton.setVisibility(View.GONE);
         } else {
             status.setText("Estado: falta elegir esta app como aplicación SMS predeterminada.");
+            setupButton.setVisibility(View.VISIBLE);
         }
     }
 

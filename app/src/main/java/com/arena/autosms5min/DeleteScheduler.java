@@ -27,7 +27,8 @@ final class DeleteScheduler {
 
     static void cancel(Context context, long smsId) {
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarms != null) alarms.cancel(pendingIntent(context, smsId, PendingIntent.FLAG_NO_CREATE));
+        PendingIntent pending = pendingIntent(context, smsId, PendingIntent.FLAG_NO_CREATE);
+        if (alarms != null && pending != null) alarms.cancel(pending);
     }
 
     private static PendingIntent pendingIntent(Context context, long smsId, int extraFlags) {
