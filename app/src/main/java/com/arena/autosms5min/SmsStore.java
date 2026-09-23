@@ -49,7 +49,7 @@ final class SmsStore {
     private static List<SmsItem> read(Context context, String selection, String[] args, String order) {
         List<SmsItem> result = new ArrayList<>();
         String[] projection = {
-                Telephony.TextBasedSmsColumns._ID,
+                android.provider.BaseColumns._ID,
                 Telephony.TextBasedSmsColumns.ADDRESS,
                 Telephony.TextBasedSmsColumns.BODY,
                 Telephony.TextBasedSmsColumns.DATE,
@@ -58,7 +58,7 @@ final class SmsStore {
         try (Cursor cursor = context.getContentResolver().query(
                 Telephony.Sms.CONTENT_URI, projection, selection, args, order)) {
             if (cursor == null) return result;
-            int idIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns._ID);
+            int idIndex = cursor.getColumnIndexOrThrow(android.provider.BaseColumns._ID);
             int addressIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.ADDRESS);
             int bodyIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.BODY);
             int dateIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.DATE);
