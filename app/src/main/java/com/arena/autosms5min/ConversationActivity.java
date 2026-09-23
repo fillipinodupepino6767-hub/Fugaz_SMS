@@ -1,12 +1,13 @@
 package com.arena.autosms5min;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.telephony.SmsManager;
-import android.view.Gravity;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -22,6 +23,13 @@ public final class ConversationActivity extends Activity {
     private String address;
     private LinearLayout messages;
     private boolean dark;
+    private final Handler countdownHandler = new Handler(Looper.getMainLooper());
+    private final Runnable countdownTicker = new Runnable() {
+        @Override public void run() {
+            populateMessages();
+            countdownHandler.postDelayed(this, 1_000L);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -41,6 +49,14 @@ public final class ConversationActivity extends Activity {
     protected void onResume() {
         super.onResume();
         populateMessages();
+        countdownHandler.removeCallbacks(countdownTicker);
+        countdownHandler.postDelayed(countdownTicker, 1_000L);
+    }
+
+    @Override
+    protected void onPause() {
+        countdownHandler.removeCallbacks(countdownTicker);
+        super.onPause();
     }
 
     private void buildUi() {
@@ -109,13 +125,28 @@ public final class ConversationActivity extends Activity {
             row.setTextColor(ThemeColors.primaryText(dark));
             card.addView(row);
 
-            // A pending registry entry means this particular incoming SMS still has a delete alarm.
-            if (item.type == SmsStore.TYPE_INBOX && DeleteRegistry.dueAt(this, item.id) > 0L) {
-                Button keep = new Button(this);
-                keep.setText("CONSERVAR ESTE SMS");
-                keep.setTextColor(ThemeColors.accent(dark));
-                keep.setOnClickListener(v -> keepMessage(item.id));
-                card.addView(keep);
+            if (item.type == SmsStore.TYPE_INBOX) {
+                long dueAt = DeleteRegistry.dueAt(this, item.id);
+                if (dueAt > 0L) {
+                    TextView timer = new TextView(this);
+                    timer.setText("Se elimina en " + CountdownFormatter.formatRemaining(dueAt));
+                    timer.setTextColor(ThemeColors.accent(dark));
+                    timer.setPadding(0, dp(8), 0, 0);
+                    card.addView(timer);
+
+                    Button keep = new Button(this);
+                    keep.setText("CONSERVAR ESTE SMS");
+                    keep.setTextColor(ThemeColors.accent(dark));
+                    keep.setOnClickListener(v -> keepMessage(item.id));
+                    card.addView(keep);
+                } else {
+                    // Messages that were conserved can later be removed deliberately.
+                    Button delete = new Button(this);
+                    delete.setText("ELIMINAR ESTE SMS");
+                    delete.setTextColor(ThemeColors.accent(dark));
+                    delete.setOnClickListener(v -> confirmDelete(item.id));
+                    card.addView(delete);
+                }
             }
             messages.addView(card);
         }
@@ -126,6 +157,24 @@ public final class ConversationActivity extends Activity {
         DeleteRegistry.remove(this, smsId);
         NotificationHelper.cancel(this, smsId);
         Toast.makeText(this, "SMS conservado. No se eliminará automáticamente.", Toast.LENGTH_LONG).show();
+        populateMessages();
+    }
+
+    private void confirmDelete(long smsId) {
+        new AlertDialog.Builder(this)
+                .setTitle("Eliminar SMS")
+                .setMessage("¿Quieres eliminar permanentemente este SMS? Esta acción no se puede deshacer.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Eliminar", (dialog, which) -> deleteNow(smsId))
+                .show();
+    }
+
+    private void deleteNow(long smsId) {
+        DeleteScheduler.cancel(this, smsId);
+        DeleteRegistry.remove(this, smsId);
+        int deleted = SmsStore.delete(this, smsId);
+        NotificationHelper.cancel(this, smsId);
+        Toast.makeText(this, deleted > 0 ? "SMS eliminado." : "No se pudo eliminar el SMS.", Toast.LENGTH_SHORT).show();
         populateMessages();
     }
 

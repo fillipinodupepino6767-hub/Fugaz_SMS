@@ -9,6 +9,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Telephony;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,6 +35,13 @@ public final class MainActivity extends Activity {
     private Button setupButton;
     private Button themeButton;
     private boolean dark;
+    private final Handler countdownHandler = new Handler(Looper.getMainLooper());
+    private final Runnable countdownTicker = new Runnable() {
+        @Override public void run() {
+            refresh();
+            countdownHandler.postDelayed(this, 1_000L);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -48,6 +57,14 @@ public final class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         refresh();
+        countdownHandler.removeCallbacks(countdownTicker);
+        countdownHandler.postDelayed(countdownTicker, 1_000L);
+    }
+
+    @Override
+    protected void onPause() {
+        countdownHandler.removeCallbacks(countdownTicker);
+        super.onPause();
     }
 
     @Override
@@ -166,7 +183,12 @@ public final class MainActivity extends Activity {
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         for (SmsStore.SmsItem item : all) {
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
-            labels.add(direction + item.address + "\n" + item.body + "\n" + format.format(item.date));
+            long dueAt = DeleteRegistry.dueAt(this, item.id);
+            String countdown = item.type == SmsStore.TYPE_INBOX && dueAt > 0L
+                    ? "\nSe elimina en " + CountdownFormatter.formatRemaining(dueAt)
+                    : "";
+            labels.add(direction + item.address + "\n" + item.body + "\n"
+                    + format.format(item.date) + countdown);
         }
         adapter.clear();
         adapter.addAll(labels);
