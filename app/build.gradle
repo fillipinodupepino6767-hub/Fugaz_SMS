@@ -1,0 +1,16 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.arena.autosms5min'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.arena.autosms5min'
+        minSdk 23
+        targetSdk 30
+        versionCode 1
+        versionName '0.1.0'
+    }
+}
