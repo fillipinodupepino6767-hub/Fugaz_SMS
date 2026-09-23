@@ -28,6 +28,9 @@
             android:name=".SimSettingsActivity"
             android:exported="false" />
         <activity
+            android:name=".DeletedHistoryActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>

@@ -1,4 +1,4 @@
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/icon_navy" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <background android:drawable="@drawable/app_icon_user" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground_empty" />
 </adaptive-icon>

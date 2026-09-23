@@ -109,6 +109,15 @@ public final class MainActivity extends Activity {
         titles.addView(subtitle);
         toolbar.addView(titles, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button deletedHistory = new Button(this);
+        deletedHistory.setText("⌛");
+        deletedHistory.setTextSize(22);
+        deletedHistory.setTextColor(ThemeColors.accent(dark));
+        deletedHistory.setContentDescription("Eliminados recientemente");
+        deletedHistory.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        deletedHistory.setMinWidth(dp(52));
+        deletedHistory.setOnClickListener(v -> startActivity(new Intent(this, DeletedHistoryActivity.class)));
+        toolbar.addView(deletedHistory, new LinearLayout.LayoutParams(dp(52), dp(52)));
         root.addView(toolbar);
 
         list = new ListView(this);
@@ -186,12 +195,13 @@ public final class MainActivity extends Activity {
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         for (SmsStore.SmsItem item : all) {
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
+            MessageClassifier.Result classification = MessageClassifier.classify(item.body);
             long dueAt = DeleteRegistry.dueAt(this, item.id);
             String countdown = item.type == SmsStore.TYPE_INBOX && dueAt > 0L
                     ? "\nSe elimina aproximadamente en " + CountdownFormatter.formatRemaining(dueAt)
                     : "";
-            labels.add(direction + item.address + "\n" + item.body + "\n"
-                    + format.format(item.date) + countdown);
+            labels.add(direction + item.address + "\n[" + classification.display() + "]\n"
+                    + item.body + "\n" + format.format(item.date) + countdown);
         }
         adapter.clear();
         adapter.addAll(labels);

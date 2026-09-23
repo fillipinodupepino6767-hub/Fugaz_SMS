@@ -17,17 +17,18 @@ public final class IncomingSmsReceiver extends BroadcastReceiver {
         if (parts == null || parts.length == 0) return;
 
         String address = parts[0].getDisplayOriginatingAddress();
-        // Blocked senders are deliberately not written to Android's local SMS provider.
-        // This prevents both an inbox entry and a notification for future messages from that sender.
-        if (Blocklist.isBlocked(context, address)) {
-            setResultCode(Activity.RESULT_OK);
-            return;
-        }
-
         StringBuilder fullBody = new StringBuilder();
         long timestamp = parts[0].getTimestampMillis();
         for (SmsMessage part : parts) fullBody.append(part.getMessageBody());
         if (timestamp <= 0) timestamp = System.currentTimeMillis();
+
+        // Blocked senders are not written to Android's SMS provider or notified.
+        // A 24-hour safety log preserves only a short preview so the discard is auditable.
+        if (Blocklist.isBlocked(context, address)) {
+            DeletionLog.add(context, address, fullBody.toString(), "Bloqueado y descartado");
+            setResultCode(Activity.RESULT_OK);
+            return;
+        }
 
         long messageId = SmsStore.insertIncoming(context, address, fullBody.toString(), timestamp);
         if (messageId > 0) {

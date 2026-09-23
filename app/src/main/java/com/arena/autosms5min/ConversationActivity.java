@@ -132,10 +132,17 @@ public final class ConversationActivity extends Activity {
 
             TextView row = new TextView(this);
             String who = item.type == SmsStore.TYPE_SENT ? "Tú" : address;
-            row.setText(who + "\n" + item.body + "\n" + format.format(item.date));
+            MessageClassifier.Result classification = MessageClassifier.classify(item.body);
+            row.setText(who + "\n[" + classification.display() + "]\n" + item.body + "\n" + format.format(item.date));
             row.setTextSize(16);
             row.setTextColor(ThemeColors.primaryText(dark));
             card.addView(row);
+
+            Button share = new Button(this);
+            share.setText("COMPARTIR");
+            share.setTextColor(ThemeColors.accent(dark));
+            share.setOnClickListener(v -> shareMessage(item));
+            card.addView(share);
 
             if (item.type == SmsStore.TYPE_INBOX) {
                 long dueAt = DeleteRegistry.dueAt(this, item.id);
@@ -208,12 +215,24 @@ public final class ConversationActivity extends Activity {
     }
 
     private void deleteNow(long smsId) {
+        SmsStore.SmsItem message = SmsStore.messageById(this, smsId);
         DeleteScheduler.cancel(this, smsId);
         DeleteRegistry.remove(this, smsId);
         int deleted = SmsStore.delete(this, smsId);
         NotificationHelper.cancel(this, smsId);
+        if (deleted > 0 && message != null) {
+            DeletionLog.add(this, message.address, message.body, "Eliminado manualmente");
+        }
         Toast.makeText(this, deleted > 0 ? "SMS eliminado." : "No se pudo eliminar el SMS.", Toast.LENGTH_SHORT).show();
         populateMessages();
+    }
+
+    /** Shares through any installed app; the chosen app may use Wi-Fi or mobile data. */
+    private void shareMessage(SmsStore.SmsItem item) {
+        Intent share = new Intent(Intent.ACTION_SEND);
+        share.setType("text/plain");
+        share.putExtra(Intent.EXTRA_TEXT, "SMS de " + item.address + ":\n" + item.body);
+        startActivity(Intent.createChooser(share, "Compartir mensaje con"));
     }
 
     private void sendSms(String body) {

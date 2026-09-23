@@ -37,6 +37,12 @@ final class SmsStore {
         return context.getContentResolver().delete(uri, null, null);
     }
 
+    static SmsItem messageById(Context context, long id) {
+        List<SmsItem> result = read(context, android.provider.BaseColumns._ID + "=?",
+                new String[]{Long.toString(id)}, null);
+        return result.isEmpty() ? null : result.get(0);
+    }
+
     static int countMessagesBefore(Context context, long cutoffMillis) {
         try (Cursor cursor = context.getContentResolver().query(
                 Telephony.Sms.CONTENT_URI,

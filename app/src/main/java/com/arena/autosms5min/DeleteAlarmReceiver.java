@@ -25,10 +25,14 @@ public final class DeleteAlarmReceiver extends BroadcastReceiver {
             return;
         }
 
+        SmsStore.SmsItem message = SmsStore.messageById(context, id);
         int deleted = SmsStore.delete(context, id);
         if (deleted > 0) {
             DeleteRegistry.remove(context, id);
             NotificationHelper.cancel(context, id);
+            if (message != null) {
+                DeletionLog.add(context, message.address, message.body, "Eliminado automáticamente");
+            }
         } else {
             // Do not silently forget a message if the provider was temporarily unavailable.
             // Retry one minute later, retaining the message's original schedule registry entry.

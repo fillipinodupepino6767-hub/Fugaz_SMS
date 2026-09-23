@@ -114,6 +114,14 @@ public final class SettingsActivity extends Activity {
         howItWorks.setOnClickListener(v -> showHowItWorks());
         root.addView(howItWorks);
 
+        Button classification = actionButton("CLASIFICACIÓN Y PALABRAS CLAVE");
+        classification.setOnClickListener(v -> new AlertDialog.Builder(this)
+                .setTitle("Clasificación local")
+                .setMessage(MessageClassifier.helpText())
+                .setPositiveButton("Entendido", null)
+                .show());
+        root.addView(classification);
+
         TextView footer = new TextView(this);
         footer.setText("Versión beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
         footer.setTextColor(ThemeColors.secondaryText(dark));
@@ -276,6 +284,7 @@ public final class SettingsActivity extends Activity {
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("Eliminar " + count + " SMS", (dialog, which) -> {
                     int deleted = SmsStore.deleteMessagesBefore(this, cutoff);
+                    DeletionLog.addSummary(this, deleted, "Limpieza de SMS anteriores");
                     Toast.makeText(this, deleted + " SMS antiguos eliminados.", Toast.LENGTH_LONG).show();
                 })
                 .show();
@@ -288,6 +297,7 @@ public final class SettingsActivity extends Activity {
                         + "• Puedes tocar Conservar desde la notificación o desde una conversación para evitar que un mensaje se borre.\n\n"
                         + "• Puedes bloquear remitentes desde una conversación. Sus próximos SMS se descartan localmente sin notificación.\n\n"
                         + "• En SIM y envío puedes ver las SIM activas, el número que el operador exponga y elegir la SIM para SMS salientes.\n\n"
+                        + "• Compartir envía el texto a otra app, como WhatsApp o correo; esa app puede usar Wi-Fi o datos, pero no convierte el SMS en un SMS por Wi-Fi.\n\n"
                         + "• Eliminar SMS anteriores solo borra SMS locales; no elimina respaldos, MMS, RCS, copias del operador ni del remitente.\n\n"
                         + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats RCS.")
                 .setPositiveButton("Entendido", null)
