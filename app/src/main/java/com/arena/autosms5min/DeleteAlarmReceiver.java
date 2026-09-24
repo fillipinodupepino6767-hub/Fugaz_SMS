@@ -26,6 +26,13 @@ public final class DeleteAlarmReceiver extends BroadcastReceiver {
         }
 
         SmsStore.SmsItem message = SmsStore.messageById(context, id);
+        // The user may have switched this type to "keep" after the alarm was set.
+        if (message != null && !shouldAutoDelete(context, message.body)) {
+            DeleteRegistry.remove(context, id);
+            NotificationHelper.cancel(context, id);
+            return;
+        }
+
         int deleted = SmsStore.delete(context, id);
         if (deleted > 0) {
             DeleteRegistry.remove(context, id);
@@ -39,5 +46,16 @@ public final class DeleteAlarmReceiver extends BroadcastReceiver {
             // Retry one minute later, retaining the message's original schedule registry entry.
             DeleteScheduler.schedule(context, id, System.currentTimeMillis() + 60_000L);
         }
+    }
+
+    private static boolean shouldAutoDelete(Context context, String body) {
+        String label = MessageClassifier.classify(body).label;
+        if (MessageClassifier.LABEL_IMPORTANT.equals(label)) {
+            return AppState.shouldDeleteImportant(context);
+        }
+        if (MessageClassifier.LABEL_SPAM.equals(label)) {
+            return AppState.shouldDeleteSpam(context);
+        }
+        return AppState.shouldDeleteNormal(context);
     }
 }

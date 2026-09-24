@@ -2,6 +2,7 @@ package com.arena.autosms5min;
 
 import android.app.Activity;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.view.View;
 
@@ -15,6 +16,15 @@ final class ThemeColors {
     static int incomingBubble(boolean dark) { return dark ? Color.rgb(48, 48, 48) : Color.rgb(245, 245, 245); }
     static int sentBubble(boolean dark) { return dark ? Color.rgb(19, 67, 96) : Color.rgb(227, 242, 253); }
     static int accent(boolean dark) { return dark ? Color.rgb(144, 202, 249) : Color.rgb(21, 101, 192); }
+
+    /** Rounded gray card in dark mode, rounded light card in light mode. */
+    static GradientDrawable rounded(android.content.Context context, int color, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        float density = context.getResources().getDisplayMetrics().density;
+        drawable.setCornerRadius(radiusDp * density + .5f);
+        return drawable;
+    }
 
     static void applySystemBars(Activity activity, boolean dark) {
         activity.getWindow().setStatusBarColor(background(dark));

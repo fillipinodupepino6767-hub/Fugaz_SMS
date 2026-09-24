@@ -1,11 +1,8 @@
 package com.arena.autosms5min;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,17 +22,20 @@ import java.util.List;
 
 /** Main inbox: intentionally uncluttered; controls live in SettingsActivity. */
 public final class MainActivity extends Activity {
-    private static final int REQUEST_PERMISSIONS = 401;
+    private static final int REQUEST_SMS_ROLE = 400;
     private final List<SmsStore.SmsItem> shownItems = new ArrayList<>();
     private ArrayAdapter<String> adapter;
     private ListView list;
     private LinearLayout emptyState;
+    private LinearLayout warningBanner;
+    private TextView warningText;
+    private TextView subtitle;
     private boolean dark;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable refreshTicker = new Runnable() {
         @Override public void run() {
             refresh();
-            refreshHandler.postDelayed(this, 30_000L);
+            refreshHandler.postDelayed(this, 1_000L);
         }
     };
 
@@ -45,7 +45,9 @@ public final class MainActivity extends Activity {
         dark = AppState.isDarkMode(this);
         ThemeColors.applySystemBars(this, dark);
         buildUi();
-        ensureSmsPermissionsIfDefault();
+        NotificationHelper.ensureChannels(this);
+        // Automatic setup on launch: request whatever runtime permissions are missing.
+        SetupHelper.requestMissingRuntimePermissions(this);
         handleComposeIntent(getIntent());
     }
 
@@ -58,13 +60,19 @@ public final class MainActivity extends Activity {
         }
         refresh();
         refreshHandler.removeCallbacks(refreshTicker);
-        refreshHandler.postDelayed(refreshTicker, 30_000L);
+        refreshHandler.postDelayed(refreshTicker, 1_000L);
     }
 
     @Override
     protected void onPause() {
         refreshHandler.removeCallbacks(refreshTicker);
         super.onPause();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        refresh();
     }
 
     @Override
@@ -101,7 +109,7 @@ public final class MainActivity extends Activity {
         title.setText("SMS 5 minutos");
         title.setTextColor(ThemeColors.primaryText(dark));
         title.setTextSize(23);
-        TextView subtitle = new TextView(this);
+        subtitle = new TextView(this);
         subtitle.setText("Bandeja temporal y privada");
         subtitle.setTextColor(ThemeColors.secondaryText(dark));
         subtitle.setTextSize(13);
@@ -119,6 +127,29 @@ public final class MainActivity extends Activity {
         deletedHistory.setOnClickListener(v -> startActivity(new Intent(this, DeletedHistoryActivity.class)));
         toolbar.addView(deletedHistory, new LinearLayout.LayoutParams(dp(52), dp(52)));
         root.addView(toolbar);
+
+        warningBanner = new LinearLayout(this);
+        warningBanner.setOrientation(LinearLayout.HORIZONTAL);
+        warningBanner.setGravity(Gravity.CENTER_VERTICAL);
+        warningBanner.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
+        warningBanner.setPadding(dp(12), dp(8), dp(8), dp(8));
+        LinearLayout.LayoutParams bannerParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        bannerParams.setMargins(dp(12), dp(2), dp(12), dp(6));
+        warningBanner.setLayoutParams(bannerParams);
+        warningText = new TextView(this);
+        warningText.setTextColor(ThemeColors.primaryText(dark));
+        warningText.setTextSize(14);
+        warningBanner.addView(warningText, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button repair = new Button(this);
+        repair.setText("REPARAR");
+        repair.setAllCaps(false);
+        repair.setTextColor(ThemeColors.accent(dark));
+        repair.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        repair.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
+        warningBanner.addView(repair);
+        root.addView(warningBanner);
 
         list = new ListView(this);
         list.setDividerHeight(dp(1));
@@ -178,40 +209,52 @@ public final class MainActivity extends Activity {
         setContentView(root);
     }
 
-    private void ensureSmsPermissionsIfDefault() {
-        if (getPackageName().equals(android.provider.Telephony.Sms.getDefaultSmsPackage(this))
-                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                && checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{
-                    Manifest.permission.RECEIVE_SMS,
-                    Manifest.permission.READ_SMS,
-                    Manifest.permission.SEND_SMS
-            }, REQUEST_PERMISSIONS);
-        }
-    }
-
     private void refresh() {
+        // Keep the scroll position: the 1-second countdown ticker rebuilds the rows.
+        int firstVisible = list.getFirstVisiblePosition();
+        View topChild = list.getChildAt(0);
+        int topOffset = topChild == null ? 0 : topChild.getTop();
+
         List<SmsStore.SmsItem> all = SmsStore.allMessages(this);
         shownItems.clear();
         shownItems.addAll(all);
         List<String> labels = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
+        boolean neverMode = AppState.retentionMillis(this) == AppState.NEVER;
         for (SmsStore.SmsItem item : all) {
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
             MessageClassifier.Result classification = MessageClassifier.classify(item.body);
-            long dueAt = DeleteRegistry.dueAt(this, item.id);
-            String countdown = item.type == SmsStore.TYPE_INBOX && dueAt > 0L
-                    ? "\nSe elimina aproximadamente en " + CountdownFormatter.formatRemaining(dueAt)
-                    : "";
+            String countdown = "";
+            if (item.type == SmsStore.TYPE_INBOX) {
+                long dueAt = DeleteRegistry.dueAt(this, item.id);
+                if (dueAt > 0L) {
+                    countdown = "\n⏳ Se elimina aproximadamente en "
+                            + CountdownFormatter.formatVerbose(dueAt);
+                } else if (neverMode) {
+                    countdown = "\nAuto-eliminación desactivada (Nunca)";
+                } else {
+                    countdown = "\n✓ Conservado · no se borra solo";
+                }
+            }
             labels.add(direction + item.address + "\n[" + classification.display() + "]\n"
                     + item.body + "\n" + format.format(item.date) + countdown);
         }
         adapter.clear();
         adapter.addAll(labels);
         adapter.notifyDataSetChanged();
+        list.setSelectionFromTop(firstVisible, topOffset);
         boolean hasMessages = !all.isEmpty();
         list.setVisibility(hasMessages ? View.VISIBLE : View.GONE);
         emptyState.setVisibility(hasMessages ? View.GONE : View.VISIBLE);
+
+        subtitle.setText("Bandeja temporal · borrado: " + AppState.retentionLabel(this));
+        String problem = SetupHelper.bannerText(this);
+        if (problem == null) {
+            warningBanner.setVisibility(View.GONE);
+        } else {
+            warningBanner.setVisibility(View.VISIBLE);
+            warningText.setText("⚠ " + problem);
+        }
     }
 
     private void handleComposeIntent(Intent intent) {

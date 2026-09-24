@@ -49,10 +49,10 @@ final class NotificationHelper {
         MessageClassifier.Result classification = MessageClassifier.classify(body);
         String title;
         String message;
-        if ("Importante".equals(classification.label)) {
+        if (MessageClassifier.LABEL_IMPORTANT.equals(classification.label)) {
             title = "Mensaje eliminado: podría ser importante";
             message = "Revísalo en Eliminados recientemente antes de que venza su historial.";
-        } else if ("Posible spam".equals(classification.label)) {
+        } else if (MessageClassifier.LABEL_SPAM.equals(classification.label)) {
             title = "Mensaje de posible spam eliminado correctamente";
             message = "La etiqueta es orientativa; puedes revisar su vista previa si lo necesitas.";
         } else {

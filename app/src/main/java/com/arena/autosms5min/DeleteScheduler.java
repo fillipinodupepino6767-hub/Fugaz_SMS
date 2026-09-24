@@ -17,11 +17,27 @@ final class DeleteScheduler {
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms == null) return;
         PendingIntent pending = pendingIntent(context, smsId, PendingIntent.FLAG_UPDATE_CURRENT);
-        // Android 11 permits exact alarms. Doze may still delay actual receiver execution slightly.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, dueAtMillis, pending);
+        // Android 12+ can deny exact alarms; fall back to an inexact alarm so the
+        // SMS is still deleted (possibly a little late) instead of never.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExact(alarms)) {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, dueAtMillis, pending);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, dueAtMillis, pending);
+            } catch (SecurityException denied) {
+                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, dueAtMillis, pending);
+            }
         } else {
             alarms.setExact(AlarmManager.RTC_WAKEUP, dueAtMillis, pending);
+        }
+        // Doze may still delay actual receiver execution slightly.
+    }
+
+    private static boolean canScheduleExact(AlarmManager alarms) {
+        try {
+            return alarms.canScheduleExactAlarms();
+        } catch (Exception ignored) {
+            return false;
         }
     }
 

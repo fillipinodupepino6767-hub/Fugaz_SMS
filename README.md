@@ -1,7 +1,30 @@
 # SMS 5 minutos — proyecto Android
 
-> **Estado:** prototipo funcional para SMS de texto en Android 11. No es una
+> **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
+
+## Novedades de la versión 0.17.0 (v17)
+
+- **Cuenta atrás en vivo:** la bandeja muestra "Se elimina en X min Y s"
+  actualizada cada segundo, y "Eliminados recientemente" muestra cuánto falta
+  para que cada vista previa se borre del historial.
+- **Modo oscuro completo:** todos los diálogos y botones usan la tarjeta gris
+  redondeada; ya no aparecen paneles blancos en modo oscuro.
+- **Fuentes grandes:** todos los selectores (tiempo de borrado, tiempo de
+  historial) se desplazan para alcanzar cada opción.
+- **Configuración automática:** al abrir la app pide los permisos que falten y
+  el botón Reparar / Configuración automática guía paso a paso (rol SMS,
+  notificaciones, alarmas exactas). Corrige el estado de predeterminada en
+  Android 12+ (RoleManager) y el bloqueo de notificaciones en Samsung/Android 13+.
+- **Borrado por tipo:** en Configuración se elige si se borran solos los
+  normales, los posible spam y los importantes (por defecto los importantes se
+  conservan). Listas de palabras clave ampliadas en ambos tipos.
+- **Alarmas exactas con plan B:** si Android 12+ deniega las alarmas exactas,
+  el borrado sigue funcionando (puede retrasarse un poco) en vez de no ocurrir.
+- **Nuevo icono:** tu diseño azul (reloj de arena + temporizador 5 min +
+  burbuja de mensaje) sobre fondo blanco estilo Google, con tamaño y margen
+  correctos para que el launcher no lo recorte. APK más liviano (recursos sin
+  uso eliminados).
 
 ## Qué hace
 

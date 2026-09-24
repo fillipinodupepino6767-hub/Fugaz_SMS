@@ -2,7 +2,6 @@ package com.arena.autosms5min;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -151,25 +150,26 @@ public final class SimSettingsActivity extends Activity {
     }
 
     private void editDisplayedNumber(SimInfo.Card card) {
-        final android.widget.EditText input = new android.widget.EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_PHONE);
         String saved = AppState.manualSimNumber(this, card.subscriptionId);
-        input.setText(saved.isEmpty() && card.numberReportedBySystem ? card.number : saved);
-        input.setSelectAllOnFocus(false);
-        new AlertDialog.Builder(this)
-                .setTitle("Número mostrado · SIM " + (card.slotIndex + 1))
-                .setMessage("Este dato solo se guarda para mostrarlo en SMS 5 minutos. No modifica la SIM ni el número de tu operador.")
-                .setView(input)
-                .setNegativeButton("Cancelar", null)
-                .setNeutralButton("Borrar guardado", (dialog, which) -> {
+        String initial = saved.isEmpty() && card.numberReportedBySystem ? card.number : saved;
+        ThemedDialog.input(this, "Número mostrado · SIM " + (card.slotIndex + 1),
+                "Este dato solo se guarda para mostrarlo en SMS 5 minutos. No modifica la SIM ni el número de tu operador.",
+                initial, android.text.InputType.TYPE_CLASS_PHONE,
+                "Borrar guardado", "Cancelar", "Guardar",
+                () -> {
                     AppState.setManualSimNumber(this, card.subscriptionId, "");
                     refresh();
-                })
-                .setPositiveButton("Guardar", (dialog, which) -> {
-                    AppState.setManualSimNumber(this, card.subscriptionId, input.getText().toString());
+                },
+                value -> {
+                    AppState.setManualSimNumber(this, card.subscriptionId, value);
                     refresh();
-                })
-                .show();
+                });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        refresh();
     }
 
     private Button actionButton(String text) {
@@ -178,7 +178,7 @@ public final class SimSettingsActivity extends Activity {
         button.setAllCaps(false);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         button.setTextColor(ThemeColors.primaryText(dark));
-        button.setBackgroundColor(ThemeColors.incomingBubble(dark));
+        button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, dp(4), 0, dp(4));

@@ -1,14 +1,9 @@
 package com.arena.autosms5min;
 
-import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.role.RoleManager;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.Telephony;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -22,12 +17,16 @@ import java.util.List;
 /** Holds all controls and guidance so the inbox can stay intentionally calm. */
 public final class SettingsActivity extends Activity {
     private static final int REQUEST_SMS_ROLE = 400;
-    private static final int REQUEST_PERMISSIONS = 401;
     private boolean dark;
     private TextView status;
     private Button setupButton;
     private Button retentionButton;
     private Button blocklistButton;
+    private Button normalDeleteButton;
+    private Button spamDeleteButton;
+    private Button importantDeleteButton;
+    private Button notifButton;
+    private Button exactAlarmButton;
     private Button deletedHistoryButton;
     private Button themeButton;
 
@@ -47,6 +46,19 @@ public final class SettingsActivity extends Activity {
             recreate();
             return;
         }
+        refreshUi();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        ensureSmsPermissionsIfDefault();
+        refreshUi();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
         refreshUi();
     }
 
@@ -85,6 +97,10 @@ public final class SettingsActivity extends Activity {
         setupButton.setOnClickListener(v -> showDefaultSmsWarning());
         root.addView(setupButton);
 
+        Button autoSetup = actionButton("CONFIGURACIÓN AUTOMÁTICA");
+        autoSetup.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
+        root.addView(autoSetup);
+
         root.addView(sectionTitle("Mensajes"));
         retentionButton = actionButton("");
         retentionButton.setOnClickListener(v -> showRetentionPicker());
@@ -106,6 +122,52 @@ public final class SettingsActivity extends Activity {
         cleanup.setOnClickListener(v -> showLegacyCleanupConfirmation());
         root.addView(cleanup);
 
+        root.addView(sectionTitle("Auto-eliminación por tipo"));
+        TextView typeNote = noteText("Elige qué tipos se borran solos con el tiempo elegido. "
+                + "Los importantes se conservan por defecto para proteger códigos y bancos.");
+        root.addView(typeNote);
+        normalDeleteButton = actionButton("");
+        normalDeleteButton.setOnClickListener(v -> {
+            AppState.setShouldDeleteNormal(this, !AppState.shouldDeleteNormal(this));
+            refreshUi();
+        });
+        root.addView(normalDeleteButton);
+        spamDeleteButton = actionButton("");
+        spamDeleteButton.setOnClickListener(v -> {
+            AppState.setShouldDeleteSpam(this, !AppState.shouldDeleteSpam(this));
+            refreshUi();
+        });
+        root.addView(spamDeleteButton);
+        importantDeleteButton = actionButton("");
+        importantDeleteButton.setOnClickListener(v -> {
+            AppState.setShouldDeleteImportant(this, !AppState.shouldDeleteImportant(this));
+            if (AppState.shouldDeleteImportant(this)) {
+                Toast.makeText(this, "Los importantes también se borrarán solos.", Toast.LENGTH_LONG).show();
+            }
+            refreshUi();
+        });
+        root.addView(importantDeleteButton);
+
+        root.addView(sectionTitle("Permisos y sistema"));
+        notifButton = actionButton("");
+        notifButton.setOnClickListener(v -> {
+            if (Build.VERSION.SDK_INT >= 33 && !SetupHelper.hasNotificationPermission(this)) {
+                SetupHelper.requestMissingRuntimePermissions(this);
+            } else {
+                SetupHelper.openNotificationSettings(this);
+            }
+        });
+        root.addView(notifButton);
+        exactAlarmButton = actionButton("");
+        exactAlarmButton.setOnClickListener(v -> {
+            if (SetupHelper.needsExactAlarmCheck() && !SetupHelper.canScheduleExactAlarms(this)) {
+                SetupHelper.openExactAlarmSettings(this);
+            } else {
+                Toast.makeText(this, "Las alarmas están listas, no se requiere acción.", Toast.LENGTH_SHORT).show();
+            }
+        });
+        root.addView(exactAlarmButton);
+
         root.addView(sectionTitle("Apariencia"));
         themeButton = actionButton("");
         themeButton.setOnClickListener(v -> {
@@ -120,15 +182,12 @@ public final class SettingsActivity extends Activity {
         root.addView(howItWorks);
 
         Button classification = actionButton("CLASIFICACIÓN Y PALABRAS CLAVE");
-        classification.setOnClickListener(v -> new AlertDialog.Builder(this)
-                .setTitle("Clasificación local")
-                .setMessage(MessageClassifier.helpText())
-                .setPositiveButton("Entendido", null)
-                .show());
+        classification.setOnClickListener(v -> ThemedDialog.message(this,
+                "Clasificación local", MessageClassifier.helpText(), "Entendido"));
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
+        footer.setText("Versión 0.17.0 beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -138,8 +197,9 @@ public final class SettingsActivity extends Activity {
     private Button actionButton(String text) {
         Button button = new Button(this);
         button.setText(text);
+        button.setAllCaps(false);
         button.setTextColor(ThemeColors.accent(dark));
-        button.setBackgroundColor(ThemeColors.incomingBubble(dark));
+        button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, dp(3), 0, dp(3));
@@ -156,6 +216,15 @@ public final class SettingsActivity extends Activity {
         return title;
     }
 
+    private TextView noteText(String text) {
+        TextView note = new TextView(this);
+        note.setText(text);
+        note.setTextSize(14);
+        note.setTextColor(ThemeColors.secondaryText(dark));
+        note.setPadding(dp(4), 0, dp(4), dp(6));
+        return note;
+    }
+
     private void refreshUi() {
         boolean isDefault = isDefaultSmsApp();
         if (isDefault) {
@@ -169,46 +238,44 @@ public final class SettingsActivity extends Activity {
         blocklistButton.setText("NÚMEROS BLOQUEADOS: " + Blocklist.count(this));
         deletedHistoryButton.setText("ELIMINADOS RECIENTEMENTE · AJUSTAR TIEMPO ("
                 + DeletionLog.retentionLabel(this).toUpperCase() + ")");
+        normalDeleteButton.setText("BORRAR NORMALES: "
+                + (AppState.shouldDeleteNormal(this) ? "SÍ" : "NO"));
+        spamDeleteButton.setText("BORRAR POSIBLE SPAM: "
+                + (AppState.shouldDeleteSpam(this) ? "SÍ" : "NO"));
+        importantDeleteButton.setText("BORRAR IMPORTANTES: "
+                + (AppState.shouldDeleteImportant(this) ? "SÍ" : "NO"));
+        notifButton.setText("NOTIFICACIONES: "
+                + (SetupHelper.notificationsEnabled(this) ? "ACTIVADAS" : "DESACTIVADAS (TOCA PARA ABRIR AJUSTES)"));
+        if (!SetupHelper.needsExactAlarmCheck()) {
+            exactAlarmButton.setText("ALARMAS EXACTAS: NO REQUERIDO EN ESTE ANDROID");
+        } else if (SetupHelper.canScheduleExactAlarms(this)) {
+            exactAlarmButton.setText("ALARMAS EXACTAS: OK");
+        } else {
+            exactAlarmButton.setText("ALARMAS EXACTAS: PENDIENTE (TOCA PARA ABRIR AJUSTE)");
+        }
         themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
     }
 
     private void showDefaultSmsWarning() {
-        new AlertDialog.Builder(this)
-                .setTitle("Usar SMS 5 minutos como app predeterminada")
-                .setMessage("Esta app debe ser la aplicación SMS predeterminada para recibir y administrar SMS. "
+        ThemedDialog.confirm(this,
+                "Usar SMS 5 minutos como app predeterminada",
+                "Esta app debe ser la aplicación SMS predeterminada para recibir y administrar SMS. "
                         + "Los SMS nuevos se eliminarán según el tiempo elegido; puedes conservarlos desde la notificación o conversación. "
-                        + "Esta versión beta gestiona SMS de texto, no MMS ni chats RCS de Google Mensajes.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Continuar", (dialog, which) -> requestSmsRole())
-                .show();
+                        + "Esta versión beta gestiona SMS de texto, no MMS ni chats RCS de Google Mensajes.",
+                "Cancelar", "Continuar", () -> requestSmsRole());
     }
 
     private void requestSmsRole() {
         if (isDefaultSmsApp()) {
             ensureSmsPermissionsIfDefault();
+            refreshUi();
             return;
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            RoleManager roles = getSystemService(RoleManager.class);
-            if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_SMS)) {
-                startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_SMS), REQUEST_SMS_ROLE);
-            }
-        } else {
-            Intent change = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-            change.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getPackageName());
-            startActivityForResult(change, REQUEST_SMS_ROLE);
-        }
+        SetupHelper.requestSmsRole(this, REQUEST_SMS_ROLE);
     }
 
     private void ensureSmsPermissionsIfDefault() {
-        if (isDefaultSmsApp() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                && checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{
-                    Manifest.permission.RECEIVE_SMS,
-                    Manifest.permission.READ_SMS,
-                    Manifest.permission.SEND_SMS
-            }, REQUEST_PERMISSIONS);
-        }
+        SetupHelper.requestMissingRuntimePermissions(this);
     }
 
     private void showRetentionPicker() {
@@ -222,46 +289,36 @@ public final class SettingsActivity extends Activity {
         long current = AppState.retentionMillis(this);
         int checked = 1;
         for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
-        new AlertDialog.Builder(this)
-                .setTitle("Tiempo para borrar SMS nuevos")
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+        ThemedDialog.singleChoice(this, "Tiempo para borrar SMS nuevos",
+                "Se aplica a los SMS que lleguen de ahora en adelante, según su tipo. "
+                        + "Los que ya tienen cuenta atrás conservan su hora original.",
+                labels, checked, which -> {
                     AppState.setRetentionMillis(this, values[which]);
-                    dialog.dismiss();
                     refreshUi();
-                })
-                .setNegativeButton("Cancelar", null)
-                .show();
+                });
     }
 
     private void showBlockedSenders() {
         List<String> senders = Blocklist.all(this);
         if (senders.isEmpty()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Números bloqueados")
-                    .setMessage("No hay números bloqueados. Abre una conversación y usa Bloquear número para añadir uno.")
-                    .setPositiveButton("Cerrar", null)
-                    .show();
+            ThemedDialog.message(this, "Números bloqueados",
+                    "No hay números bloqueados. Abre una conversación y usa Bloquear número para añadir uno.",
+                    "Cerrar");
             return;
         }
         String[] items = senders.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Números bloqueados")
-                .setItems(items, (dialog, which) -> confirmUnblock(items[which]))
-                .setNegativeButton("Cerrar", null)
-                .show();
+        ThemedDialog.items(this, "Números bloqueados",
+                "Toca un número para desbloquearlo.", items, "Cerrar", which -> confirmUnblock(items[which]));
     }
 
     private void confirmUnblock(String sender) {
-        new AlertDialog.Builder(this)
-                .setTitle("Desbloquear " + sender)
-                .setMessage("Los próximos SMS de este remitente volverán a recibirse normalmente.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Desbloquear", (dialog, which) -> {
+        ThemedDialog.confirm(this, "Desbloquear " + sender,
+                "Los próximos SMS de este remitente volverán a recibirse normalmente.",
+                "Cancelar", "Desbloquear", () -> {
                     Blocklist.unblock(this, sender);
                     Toast.makeText(this, sender + " desbloqueado.", Toast.LENGTH_SHORT).show();
                     refreshUi();
-                })
-                .show();
+                });
     }
 
     private void showLegacyCleanupConfirmation() {
@@ -275,44 +332,38 @@ public final class SettingsActivity extends Activity {
             Toast.makeText(this, "No hay SMS anteriores para eliminar.", Toast.LENGTH_SHORT).show();
             return;
         }
-        new AlertDialog.Builder(this)
-                .setTitle("Eliminar " + count + " SMS anteriores")
-                .setMessage("Esto borrará de la base local de Android todos los SMS anteriores al momento en que empezaste a usar esta app. "
-                        + "Incluye mensajes recibidos, enviados y borradores antiguos. No elimina copias de seguridad, MMS ni chats RCS.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Continuar", (dialog, which) -> showFinalLegacyCleanupConfirmation(count, cutoff))
-                .show();
+        ThemedDialog.confirm(this, "Eliminar " + count + " SMS anteriores",
+                "Esto borrará de la base local de Android todos los SMS anteriores al momento en que empezaste a usar esta app. "
+                        + "Incluye mensajes recibidos, enviados y borradores antiguos. No elimina copias de seguridad, MMS ni chats RCS.",
+                "Cancelar", "Continuar", () -> showFinalLegacyCleanupConfirmation(count, cutoff));
     }
 
     private void showFinalLegacyCleanupConfirmation(int count, long cutoff) {
-        new AlertDialog.Builder(this)
-                .setTitle("Confirmación final")
-                .setMessage("Vas a eliminar " + count + " SMS locales antiguos. Esta acción no se puede deshacer. ¿Deseas eliminarlos ahora?")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Eliminar " + count + " SMS", (dialog, which) -> {
+        ThemedDialog.confirm(this, "Confirmación final",
+                "Vas a eliminar " + count + " SMS locales antiguos. Esta acción no se puede deshacer. ¿Deseas eliminarlos ahora?",
+                "Cancelar", "Eliminar " + count + " SMS", () -> {
                     int deleted = SmsStore.deleteMessagesBefore(this, cutoff);
                     DeletionLog.addSummary(this, deleted, "Limpieza de SMS anteriores");
                     Toast.makeText(this, deleted + " SMS antiguos eliminados.", Toast.LENGTH_LONG).show();
-                })
-                .show();
+                });
     }
 
     private void showHowItWorks() {
-        new AlertDialog.Builder(this)
-                .setTitle("Cómo funciona")
-                .setMessage("• Los SMS nuevos se eliminan aproximadamente tras el tiempo elegido.\n\n"
+        ThemedDialog.message(this, "Cómo funciona",
+                "• Los SMS nuevos se eliminan aproximadamente tras el tiempo elegido, según su tipo (normal, posible spam o importante).\n\n"
+                        + "• Los importantes se conservan por defecto; cámbialo en Auto-eliminación por tipo si quieres que también se borren.\n\n"
                         + "• Puedes tocar Conservar desde la notificación o desde una conversación para evitar que un mensaje se borre.\n\n"
                         + "• Puedes bloquear remitentes desde una conversación. Sus próximos SMS se descartan localmente sin notificación.\n\n"
                         + "• En SIM y envío puedes ver las SIM activas, el número que el operador exponga y elegir la SIM para SMS salientes.\n\n"
                         + "• Compartir envía el texto a otra app, como WhatsApp o correo; esa app puede usar Wi-Fi o datos, pero no convierte el SMS en un SMS por Wi-Fi.\n\n"
                         + "• Eliminar SMS anteriores solo borra SMS locales; no elimina respaldos, MMS, RCS, copias del operador ni del remitente.\n\n"
-                        + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats RCS.")
-                .setPositiveButton("Entendido", null)
-                .show();
+                        + "• Si algo falla (notificaciones, borrado), usa Configuración automática: revisa rol, permisos y alarmas paso a paso.\n\n"
+                        + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats RCS.",
+                "Entendido");
     }
 
     private boolean isDefaultSmsApp() {
-        return getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(this));
+        return SetupHelper.isDefaultSms(this);
     }
 
     private int dp(int value) {

@@ -1,11 +1,12 @@
 package com.arena.autosms5min;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.text.DateFormat;
@@ -27,6 +29,13 @@ public final class DeletedHistoryActivity extends Activity {
     private TextView empty;
     private Button retention;
     private ArrayAdapter<String> adapter;
+    private final Handler tickerHandler = new Handler(Looper.getMainLooper());
+    private final Runnable ticker = new Runnable() {
+        @Override public void run() {
+            refresh();
+            tickerHandler.postDelayed(this, 1_000L);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -40,6 +49,14 @@ public final class DeletedHistoryActivity extends Activity {
     protected void onResume() {
         super.onResume();
         refresh();
+        tickerHandler.removeCallbacks(ticker);
+        tickerHandler.postDelayed(ticker, 1_000L);
+    }
+
+    @Override
+    protected void onPause() {
+        tickerHandler.removeCallbacks(ticker);
+        super.onPause();
     }
 
     private void buildUi() {
@@ -81,7 +98,7 @@ public final class DeletedHistoryActivity extends Activity {
         retention = new Button(this);
         retention.setAllCaps(false);
         retention.setTextColor(ThemeColors.accent(dark));
-        retention.setBackgroundColor(ThemeColors.incomingBubble(dark));
+        retention.setBackground(roundedBackground(ThemeColors.incomingBubble(dark), 10));
         retention.setGravity(Gravity.CENTER);
         retention.setOnClickListener(v -> chooseRetention());
         root.addView(retention, new LinearLayout.LayoutParams(
@@ -114,6 +131,10 @@ public final class DeletedHistoryActivity extends Activity {
     }
 
     private void refresh() {
+        int firstVisible = list.getFirstVisiblePosition();
+        View topChild = list.getChildAt(0);
+        int topOffset = topChild == null ? 0 : topChild.getTop();
+
         List<DeletionLog.Entry> entries = DeletionLog.entries(this);
         String period = DeletionLog.retentionLabel(this);
         subtitle.setText(DeletionLog.totalDeleted(this) + " mensajes eliminados en total · El registro no es una copia de seguridad.");
@@ -121,14 +142,16 @@ public final class DeletedHistoryActivity extends Activity {
         List<String> rows = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         for (DeletionLog.Entry entry : entries) {
-            String tag = entry.keyword.isEmpty() ? entry.label : entry.label + " · “" + entry.keyword + "”";
+            String tag = entry.keyword.isEmpty() ? entry.label : entry.label + " · \u201C" + entry.keyword + "\u201D";
             rows.add(entry.sender + "\n[" + tag + "] · " + entry.reason + "\n"
                     + entry.preview + "\nEliminado: " + format.format(entry.time)
-                    + " · Se borra del historial: " + format.format(entry.expiresAt));
+                    + "\nSe borra del historial: " + format.format(entry.expiresAt)
+                    + "  (quedan " + CountdownFormatter.formatHistoryRemaining(entry.expiresAt) + ")");
         }
         adapter.clear();
         adapter.addAll(rows);
         adapter.notifyDataSetChanged();
+        list.setSelectionFromTop(firstVisible, topOffset);
         list.setVisibility(rows.isEmpty() ? View.GONE : View.VISIBLE);
         empty.setText("No hay eliminaciones recientes.\nLas vistas previas se borran definitivamente después de "
                 + DeletionLog.retentionLabel(this) + ".");
@@ -137,7 +160,8 @@ public final class DeletedHistoryActivity extends Activity {
 
     /**
      * Uses our own themed option sheet. The platform's light single-choice rows
-     * became invisible on some Motorola dark-mode combinations.
+     * became invisible on some Motorola dark-mode combinations. The content
+     * scrolls so large-font phones can reach every option.
      */
     private void chooseRetention() {
         final String[] labels = {"1 hora", "6 horas", "12 horas", "24 horas", "72 horas", "7 días"};
@@ -172,8 +196,8 @@ public final class DeletedHistoryActivity extends Activity {
             boolean selected = selectedValue == current;
             option.setAllCaps(false);
             option.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-            option.setText((selected ? "✓  " : "○  ") + labels[i]
-                    + (selected ? "  · actual" : ""));
+            option.setText((selected ? "\u2713  " : "\u25CB  ") + labels[i]
+                    + (selected ? "  \u00B7 actual" : ""));
             option.setTextSize(16);
             option.setTextColor(ThemeColors.accent(dark));
             option.setBackground(roundedBackground(selected ? ThemeColors.sentBubble(dark)
@@ -201,7 +225,10 @@ public final class DeletedHistoryActivity extends Activity {
         cancelParams.topMargin = dp(6);
         card.addView(cancel, cancelParams);
 
-        chooser.setContentView(card);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(Color.TRANSPARENT);
+        scroll.addView(card);
+        chooser.setContentView(scroll);
         chooser.show();
         if (chooser.getWindow() != null) {
             chooser.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
@@ -211,15 +238,12 @@ public final class DeletedHistoryActivity extends Activity {
     }
 
     private void confirmClear() {
-        new AlertDialog.Builder(this)
-                .setTitle("Vaciar eliminados recientemente")
-                .setMessage("Se borrarán las vistas previas y remitentes guardados en este historial. El contador total se conservará.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Vaciar", (dialog, which) -> {
+        ThemedDialog.confirm(this, "Vaciar eliminados recientemente",
+                "Se borrarán las vistas previas y remitentes guardados en este historial. El contador total se conservará.",
+                "Cancelar", "Vaciar", () -> {
                     DeletionLog.clear(this);
                     refresh();
-                })
-                .show();
+                });
     }
 
     private GradientDrawable roundedBackground(int color, int radiusDp) {

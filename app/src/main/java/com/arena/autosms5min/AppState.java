@@ -11,6 +11,9 @@ final class AppState {
     private static final String KEY_RETENTION_MS = "retention_ms";
     private static final String KEY_OUTGOING_SUBSCRIPTION_ID = "outgoing_subscription_id";
     private static final String KEY_SIM_NUMBER_PREFIX = "manual_sim_number_";
+    private static final String KEY_DELETE_NORMAL = "delete_normal";
+    private static final String KEY_DELETE_SPAM = "delete_spam";
+    private static final String KEY_DELETE_IMPORTANT = "delete_important";
     static final long ONE_MINUTE = 60_000L;
     static final long FIVE_MINUTES = 5L * ONE_MINUTE;
     static final long TEN_MINUTES = 10L * ONE_MINUTE;
@@ -70,6 +73,35 @@ final class AppState {
 
     static void setOutgoingSubscriptionId(Context context, int subscriptionId) {
         prefs(context).edit().putInt(KEY_OUTGOING_SUBSCRIPTION_ID, subscriptionId).apply();
+    }
+
+    /**
+     * Per-type auto-delete switches. Important messages are kept by default to
+     * protect bank codes and security messages; normal and spam follow the
+     * chosen retention time unless the user changes these switches.
+     */
+    static boolean shouldDeleteNormal(Context context) {
+        return prefs(context).getBoolean(KEY_DELETE_NORMAL, true);
+    }
+
+    static void setShouldDeleteNormal(Context context, boolean enabled) {
+        prefs(context).edit().putBoolean(KEY_DELETE_NORMAL, enabled).apply();
+    }
+
+    static boolean shouldDeleteSpam(Context context) {
+        return prefs(context).getBoolean(KEY_DELETE_SPAM, true);
+    }
+
+    static void setShouldDeleteSpam(Context context, boolean enabled) {
+        prefs(context).edit().putBoolean(KEY_DELETE_SPAM, enabled).apply();
+    }
+
+    static boolean shouldDeleteImportant(Context context) {
+        return prefs(context).getBoolean(KEY_DELETE_IMPORTANT, false);
+    }
+
+    static void setShouldDeleteImportant(Context context, boolean enabled) {
+        prefs(context).edit().putBoolean(KEY_DELETE_IMPORTANT, enabled).apply();
     }
 
     /** Optional display fallback only; it does not write to or alter the SIM card. */

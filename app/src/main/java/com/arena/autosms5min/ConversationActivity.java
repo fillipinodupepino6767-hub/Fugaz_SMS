@@ -1,13 +1,13 @@
 package com.arena.autosms5min;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.SmsManager;
+import android.view.Gravity;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -66,14 +66,13 @@ public final class ConversationActivity extends Activity {
         root.setBackgroundColor(ThemeColors.background(dark));
 
         TextView heading = new TextView(this);
-        heading.setText(address + "\nLos entrantes se borran cinco minutos después de su llegada, salvo que pulses Conservar.");
+        heading.setText(address + "\n" + retentionHint());
         heading.setTextSize(18);
         heading.setTextColor(ThemeColors.primaryText(dark));
         root.addView(heading);
 
-        Button blockSender = new Button(this);
-        boolean currentlyBlocked = Blocklist.isBlocked(this, address);
-        blockSender.setText(currentlyBlocked ? "DESBLOQUEAR NÚMERO" : "BLOQUEAR NÚMERO");
+        Button blockSender = secondaryButton(
+                Blocklist.isBlocked(this, address) ? "DESBLOQUEAR NÚMERO" : "BLOQUEAR NÚMERO");
         blockSender.setOnClickListener(v -> {
             if (Blocklist.isBlocked(this, address)) {
                 confirmUnblockSender();
@@ -94,6 +93,7 @@ public final class ConversationActivity extends Activity {
 
         LinearLayout composer = new LinearLayout(this);
         composer.setOrientation(LinearLayout.HORIZONTAL);
+        composer.setGravity(Gravity.CENTER_VERTICAL);
         EditText text = new EditText(this);
         text.setHint("Escribe un SMS");
         text.setHintTextColor(ThemeColors.secondaryText(dark));
@@ -103,15 +103,43 @@ public final class ConversationActivity extends Activity {
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button send = new Button(this);
         send.setText("ENVIAR");
+        send.setAllCaps(false);
+        send.setTextColor(ThemeColors.accent(dark));
+        send.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
         send.setOnClickListener(v -> {
             String body = text.getText().toString();
             if (body.trim().isEmpty()) return;
             sendSms(body);
             text.setText("");
         });
-        composer.addView(send);
+        LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        sendParams.setMargins(dp(8), 0, 0, 0);
+        composer.addView(send, sendParams);
         root.addView(composer);
         setContentView(root);
+    }
+
+    private String retentionHint() {
+        long retention = AppState.retentionMillis(this);
+        if (retention == AppState.NEVER) {
+            return "El auto-borrado está en Nunca: los entrantes se conservan salvo que los elimines.";
+        }
+        return "Los entrantes se borran aprox. " + AppState.retentionLabel(this)
+                + " después de su llegada, salvo que pulses Conservar.";
+    }
+
+    private Button secondaryButton(String text) {
+        Button button = new Button(this);
+        button.setText(text);
+        button.setAllCaps(false);
+        button.setTextColor(ThemeColors.accent(dark));
+        button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, dp(6), 0, dp(2));
+        button.setLayoutParams(params);
+        return button;
     }
 
     private void populateMessages() {
@@ -123,8 +151,8 @@ public final class ConversationActivity extends Activity {
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setPadding(dp(12), dp(10), dp(12), dp(10));
-            card.setBackgroundColor(item.type == SmsStore.TYPE_SENT
-                    ? ThemeColors.sentBubble(dark) : ThemeColors.incomingBubble(dark));
+            card.setBackground(ThemeColors.rounded(this, item.type == SmsStore.TYPE_SENT
+                    ? ThemeColors.sentBubble(dark) : ThemeColors.incomingBubble(dark), 12));
             LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             cardParams.setMargins(0, dp(4), 0, dp(4));
@@ -138,9 +166,7 @@ public final class ConversationActivity extends Activity {
             row.setTextColor(ThemeColors.primaryText(dark));
             card.addView(row);
 
-            Button share = new Button(this);
-            share.setText("COMPARTIR");
-            share.setTextColor(ThemeColors.accent(dark));
+            Button share = secondaryButton("COMPARTIR");
             share.setOnClickListener(v -> shareMessage(item));
             card.addView(share);
 
@@ -148,21 +174,18 @@ public final class ConversationActivity extends Activity {
                 long dueAt = DeleteRegistry.dueAt(this, item.id);
                 if (dueAt > 0L) {
                     TextView timer = new TextView(this);
-                    timer.setText("Se elimina aproximadamente en " + CountdownFormatter.formatRemaining(dueAt));
+                    timer.setText("⏳ Se elimina aproximadamente en "
+                            + CountdownFormatter.formatVerbose(dueAt));
                     timer.setTextColor(ThemeColors.accent(dark));
                     timer.setPadding(0, dp(8), 0, 0);
                     card.addView(timer);
 
-                    Button keep = new Button(this);
-                    keep.setText("CONSERVAR ESTE SMS");
-                    keep.setTextColor(ThemeColors.accent(dark));
+                    Button keep = secondaryButton("CONSERVAR ESTE SMS");
                     keep.setOnClickListener(v -> keepMessage(item.id));
                     card.addView(keep);
                 } else {
                     // Messages that were conserved can later be removed deliberately.
-                    Button delete = new Button(this);
-                    delete.setText("ELIMINAR ESTE SMS");
-                    delete.setTextColor(ThemeColors.accent(dark));
+                    Button delete = secondaryButton("ELIMINAR ESTE SMS");
                     delete.setOnClickListener(v -> confirmDelete(item.id));
                     card.addView(delete);
                 }
@@ -172,29 +195,23 @@ public final class ConversationActivity extends Activity {
     }
 
     private void confirmBlockSender() {
-        new AlertDialog.Builder(this)
-                .setTitle("Bloquear " + address)
-                .setMessage("Los próximos SMS de este remitente se descartarán inmediatamente, sin notificación y sin aparecer en la bandeja. Esto no bloquea llamadas.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Bloquear", (dialog, which) -> {
+        ThemedDialog.confirm(this, "Bloquear " + address,
+                "Los próximos SMS de este remitente se descartarán inmediatamente, sin notificación y sin aparecer en la bandeja. Esto no bloquea llamadas.",
+                "Cancelar", "Bloquear", () -> {
                     Blocklist.block(this, address);
                     Toast.makeText(this, address + " bloqueado para SMS.", Toast.LENGTH_LONG).show();
                     recreate();
-                })
-                .show();
+                });
     }
 
     private void confirmUnblockSender() {
-        new AlertDialog.Builder(this)
-                .setTitle("Desbloquear " + address)
-                .setMessage("Los próximos SMS de este remitente volverán a recibirse normalmente.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Desbloquear", (dialog, which) -> {
+        ThemedDialog.confirm(this, "Desbloquear " + address,
+                "Los próximos SMS de este remitente volverán a recibirse normalmente.",
+                "Cancelar", "Desbloquear", () -> {
                     Blocklist.unblock(this, address);
                     Toast.makeText(this, address + " desbloqueado.", Toast.LENGTH_SHORT).show();
                     recreate();
-                })
-                .show();
+                });
     }
 
     private void keepMessage(long smsId) {
@@ -206,12 +223,9 @@ public final class ConversationActivity extends Activity {
     }
 
     private void confirmDelete(long smsId) {
-        new AlertDialog.Builder(this)
-                .setTitle("Eliminar SMS")
-                .setMessage("¿Quieres eliminar permanentemente este SMS? Esta acción no se puede deshacer.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Eliminar", (dialog, which) -> deleteNow(smsId))
-                .show();
+        ThemedDialog.confirm(this, "Eliminar SMS",
+                "¿Quieres eliminar permanentemente este SMS? Esta acción no se puede deshacer.",
+                "Cancelar", "Eliminar", () -> deleteNow(smsId));
     }
 
     private void deleteNow(long smsId) {

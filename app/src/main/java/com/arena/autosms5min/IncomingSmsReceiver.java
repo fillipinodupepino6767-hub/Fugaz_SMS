@@ -32,8 +32,10 @@ public final class IncomingSmsReceiver extends BroadcastReceiver {
 
         long messageId = SmsStore.insertIncoming(context, address, fullBody.toString(), timestamp);
         if (messageId > 0) {
+            MessageClassifier.Result classification =
+                    MessageClassifier.classify(fullBody.toString());
             long retention = AppState.retentionMillis(context);
-            if (retention != AppState.NEVER) {
+            if (retention != AppState.NEVER && shouldAutoDelete(context, classification.label)) {
                 long dueAt = System.currentTimeMillis() + retention;
                 DeleteRegistry.add(context, messageId, dueAt);
                 DeleteScheduler.schedule(context, messageId, dueAt);
@@ -41,5 +43,15 @@ public final class IncomingSmsReceiver extends BroadcastReceiver {
             NotificationHelper.showIncoming(context, messageId, address, fullBody.toString());
         }
         setResultCode(Activity.RESULT_OK);
+    }
+
+    private static boolean shouldAutoDelete(Context context, String label) {
+        if (MessageClassifier.LABEL_IMPORTANT.equals(label)) {
+            return AppState.shouldDeleteImportant(context);
+        }
+        if (MessageClassifier.LABEL_SPAM.equals(label)) {
+            return AppState.shouldDeleteSpam(context);
+        }
+        return AppState.shouldDeleteNormal(context);
     }
 }
