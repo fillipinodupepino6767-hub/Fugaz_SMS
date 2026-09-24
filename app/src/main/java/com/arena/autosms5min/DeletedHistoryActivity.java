@@ -16,12 +16,13 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-/** A 24-hour local safety journal for SMS discarded by this app. */
+/** Temporary safety journal for SMS discarded by this app. Tap an entry to recover it. */
 public final class DeletedHistoryActivity extends Activity {
     private boolean dark;
     private TextView subtitle;
@@ -29,6 +30,7 @@ public final class DeletedHistoryActivity extends Activity {
     private TextView empty;
     private Button retention;
     private ArrayAdapter<String> adapter;
+    private List<DeletionLog.Entry> shownEntries = new ArrayList<>();
     private final Handler tickerHandler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
@@ -117,6 +119,7 @@ public final class DeletedHistoryActivity extends Activity {
             }
         };
         list.setAdapter(adapter);
+        list.setOnItemClickListener((parent, view, position, id) -> showEntryOptions(position));
         root.addView(list, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
@@ -136,8 +139,11 @@ public final class DeletedHistoryActivity extends Activity {
         int topOffset = topChild == null ? 0 : topChild.getTop();
 
         List<DeletionLog.Entry> entries = DeletionLog.entries(this);
+        shownEntries = entries;
         String period = DeletionLog.retentionLabel(this);
-        subtitle.setText(DeletionLog.totalDeleted(this) + " mensajes eliminados en total · El registro no es una copia de seguridad.");
+        subtitle.setText(DeletionLog.totalDeleted(this) + " mensajes eliminados en total · "
+                + "Toca un registro para recuperarlo. El historial guarda el mensaje completo "
+                + "hasta que venza; no es una copia permanente.");
         retention.setText("Conservar vistas previas: " + period + "  ›");
         List<String> rows = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
@@ -156,6 +162,81 @@ public final class DeletedHistoryActivity extends Activity {
         empty.setText("No hay eliminaciones recientes.\nLas vistas previas se borran definitivamente después de "
                 + DeletionLog.retentionLabel(this) + ".");
         empty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private void showEntryOptions(int position) {
+        if (position < 0 || position >= shownEntries.size()) return;
+        DeletionLog.Entry entry = shownEntries.get(position);
+        if (DeletionLog.isSummary(entry)) {
+            ThemedDialog.items(this, entry.sender, entry.preview
+                            + "\n\nEste es un registro informativo de limpieza, no un mensaje recuperable.",
+                    new String[]{"Eliminar este registro"}, "Cancelar", which -> {
+                        if (which == 0) {
+                            DeletionLog.removeEntry(this, entry.time, entry.sender, entry.preview);
+                            refresh();
+                        }
+                    });
+            return;
+        }
+        String tag = entry.keyword.isEmpty() ? entry.label
+                : entry.label + " · \u201C" + entry.keyword + "\u201D";
+        if (entry.hasFull()) {
+            ThemedDialog.items(this, entry.sender,
+                    "[" + tag + "] · " + entry.reason + "\n" + entry.preview
+                            + "\n\nRecuperar devuelve el mensaje COMPLETO a la app, conservado "
+                            + "(sin borrado automático).",
+                    new String[]{"Recuperar a la bandeja", "Recuperar en Archivados",
+                            "Eliminar este registro"},
+                    "Cancelar", which -> {
+                        if (which == 0) recover(entry, false, true);
+                        else if (which == 1) recover(entry, true, true);
+                        else {
+                            DeletionLog.removeEntry(this, entry.time, entry.sender, entry.preview);
+                            refresh();
+                        }
+                    });
+        } else {
+            ThemedDialog.items(this, entry.sender,
+                    "Este registro se guardó antes de la función de recuperación y solo conserva "
+                            + "una vista previa:\n\n" + entry.preview,
+                    new String[]{"Recuperar vista previa a la bandeja", "Eliminar este registro"},
+                    "Cancelar", which -> {
+                        if (which == 0) recover(entry, false, false);
+                        else {
+                            DeletionLog.removeEntry(this, entry.time, entry.sender, entry.preview);
+                            refresh();
+                        }
+                    });
+        }
+    }
+
+    private void recover(DeletionLog.Entry entry, boolean toArchive, boolean useFull) {
+        if (!SetupHelper.isDefaultSms(this)) {
+            Toast.makeText(this, "Para recuperar, la app debe ser la predeterminada.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        String text = useFull ? entry.full : entry.preview;
+        if (text.isEmpty()) {
+            Toast.makeText(this, "Este registro no tiene texto que recuperar.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        long id;
+        try {
+            id = SmsStore.insertIncoming(this, entry.sender, text, System.currentTimeMillis());
+        } catch (SecurityException denied) {
+            id = -1L;
+        }
+        if (id > 0L) {
+            if (toArchive) ArchiveStore.archive(this, id);
+            DeletionLog.removeEntry(this, entry.time, entry.sender, entry.preview);
+            Toast.makeText(this, toArchive ? "Recuperado en Archivados (conservado)."
+                    : "Recuperado a la bandeja (conservado).", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "No se pudo recuperar el mensaje.", Toast.LENGTH_LONG).show();
+        }
+        refresh();
     }
 
     /**

@@ -3,6 +3,21 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.19.0 (v19)
+
+- **Apariencia automática:** nuevo modo "Automático (según el teléfono)" que
+  sigue el modo claro/oscuro del celular. Tu ajuste anterior se respeta; los
+  nuevos usan automático.
+- **Recuperar eliminados:** toca un registro en Eliminados recientemente para
+  devolver el mensaje COMPLETO a la bandeja o a Archivados (queda conservado,
+  sin borrado automático). El historial ahora guarda el texto completo hasta
+  que venza; sigue sin ser una copia permanente.
+- **Diagnóstico de recepción:** nuevo botón que muestra estado real (rol,
+  permisos, último SMS recibido, borrados pendientes) y explica por qué los
+  chats RCS nunca llegan a esta app ni a ninguna tercera (Google no da acceso).
+- **Aclaración RCS:** no es posible recibir RCS ni combinar RCS+datos en esta
+  app. Para recibirlo todo como SMS, desactiva Chats RCS en Google Mensajes.
+
 ## Novedades de la versión 0.18.0 (v18)
 
 - **Deslizar estilo Gmail:** desliza un mensaje en la bandeja para eliminarlo

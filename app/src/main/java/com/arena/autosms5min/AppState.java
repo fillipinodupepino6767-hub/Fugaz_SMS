@@ -2,12 +2,14 @@ package com.arena.autosms5min;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 
 /** Small persistent UI and deletion preferences for this local-only SMS app. */
 final class AppState {
     private static final String PREFS = "app_state";
     private static final String KEY_VISIBLE_SINCE = "visible_since";
     private static final String KEY_DARK_MODE = "dark_mode";
+    private static final String KEY_THEME_MODE = "theme_mode";
     private static final String KEY_RETENTION_MS = "retention_ms";
     private static final String KEY_OUTGOING_SUBSCRIPTION_ID = "outgoing_subscription_id";
     private static final String KEY_SIM_NUMBER_PREFIX = "manual_sim_number_";
@@ -16,6 +18,11 @@ final class AppState {
     private static final String KEY_DELETE_IMPORTANT = "delete_important";
     private static final String KEY_SWIPE_RIGHT = "swipe_right";
     private static final String KEY_SWIPE_LEFT = "swipe_left";
+    private static final String KEY_LAST_SMS_AT = "last_sms_received_at";
+    /** Appearance modes. */
+    static final int THEME_LIGHT = 0;
+    static final int THEME_DARK = 1;
+    static final int THEME_SYSTEM = 2;
     /** Swipe actions for the inbox list. */
     static final int SWIPE_NOTHING = 0;
     static final int SWIPE_DELETE = 1;
@@ -42,12 +49,41 @@ final class AppState {
         return now;
     }
 
+    /** New installs follow the phone; the old on/off switch migrates automatically. */
+    static int themeMode(Context context) {
+        SharedPreferences prefs = prefs(context);
+        if (prefs.contains(KEY_THEME_MODE)) return prefs.getInt(KEY_THEME_MODE, THEME_SYSTEM);
+        if (prefs.contains(KEY_DARK_MODE)) {
+            int migrated = prefs.getBoolean(KEY_DARK_MODE, false) ? THEME_DARK : THEME_LIGHT;
+            prefs.edit().putInt(KEY_THEME_MODE, migrated).apply();
+            return migrated;
+        }
+        return THEME_SYSTEM;
+    }
+
+    static void setThemeMode(Context context, int mode) {
+        prefs(context).edit().putInt(KEY_THEME_MODE, mode).apply();
+    }
+
+    static String themeLabel(Context context) {
+        int mode = themeMode(context);
+        if (mode == THEME_LIGHT) return "Claro";
+        if (mode == THEME_DARK) return "Oscuro";
+        return "Automático (teléfono)";
+    }
+
     static boolean isDarkMode(Context context) {
-        return prefs(context).getBoolean(KEY_DARK_MODE, false);
+        int mode = themeMode(context);
+        if (mode == THEME_SYSTEM) {
+            int night = context.getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK;
+            return night == Configuration.UI_MODE_NIGHT_YES;
+        }
+        return mode == THEME_DARK;
     }
 
     static void setDarkMode(Context context, boolean enabled) {
-        prefs(context).edit().putBoolean(KEY_DARK_MODE, enabled).apply();
+        setThemeMode(context, enabled ? THEME_DARK : THEME_LIGHT);
     }
 
     /** The choice applies to new incoming SMS; existing scheduled SMS keep their original due time. */
@@ -131,6 +167,15 @@ final class AppState {
         if (action == SWIPE_DELETE) return "Eliminar";
         if (action == SWIPE_ARCHIVE) return "Archivar";
         return "Nada";
+    }
+
+    /** 0 means no SMS has been received since this version was installed. */
+    static long lastSmsReceivedAt(Context context) {
+        return prefs(context).getLong(KEY_LAST_SMS_AT, 0L);
+    }
+
+    static void setLastSmsReceivedAt(Context context, long atMillis) {
+        prefs(context).edit().putLong(KEY_LAST_SMS_AT, atMillis).apply();
     }
 
     /** Optional display fallback only; it does not write to or alter the SIM card. */

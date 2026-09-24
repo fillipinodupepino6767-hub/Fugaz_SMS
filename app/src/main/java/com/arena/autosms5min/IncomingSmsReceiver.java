@@ -32,6 +32,7 @@ public final class IncomingSmsReceiver extends BroadcastReceiver {
 
         long messageId = SmsStore.insertIncoming(context, address, fullBody.toString(), timestamp);
         if (messageId > 0) {
+            AppState.setLastSmsReceivedAt(context, System.currentTimeMillis());
             MessageClassifier.Result classification =
                     MessageClassifier.classify(fullBody.toString());
             long retention = AppState.retentionMillis(context);

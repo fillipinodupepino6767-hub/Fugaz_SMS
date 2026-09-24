@@ -14,6 +14,10 @@ import java.util.List;
  * Short local safety log, never a backup. Every entry owns an expiry timestamp.
  * Once it expires (or is cleared), it is removed permanently and is never restored
  * if the user later chooses a longer history period.
+ *
+ * Since v19 each entry also keeps the full message text (capped) until it
+ * expires, so it can be recovered to the inbox or to the archive. It is still
+ * a temporary record, not a permanent backup.
  */
 final class DeletionLog {
     static final long ONE_HOUR_MS = 60L * 60L * 1000L;
@@ -23,6 +27,8 @@ final class DeletionLog {
     private static final String KEY_RETENTION = "preview_retention_ms";
     private static final long DEFAULT_RETENTION_MS = 24L * ONE_HOUR_MS;
     private static final int MAX_ENTRIES = 80;
+    private static final int MAX_FULL_CHARS = 5000;
+    private static final String SUMMARY_SENDER = "Limpieza de SMS";
 
     private DeletionLog() { }
 
@@ -30,8 +36,8 @@ final class DeletionLog {
         List<Entry> entries = load(context);
         MessageClassifier.Result classification = MessageClassifier.classify(body);
         long now = System.currentTimeMillis();
-        entries.add(0, new Entry(sender, preview(body), now, now + retentionMillis(context), reason,
-                classification.label, classification.keyword));
+        entries.add(0, new Entry(sender, preview(body), fullBody(body), now,
+                now + retentionMillis(context), reason, classification.label, classification.keyword));
         trim(entries);
         save(context, entries);
         prefs(context).edit().putInt(KEY_TOTAL, totalDeleted(context) + 1).apply();
@@ -42,8 +48,8 @@ final class DeletionLog {
         if (count <= 0) return;
         List<Entry> entries = load(context);
         long now = System.currentTimeMillis();
-        entries.add(0, new Entry("Limpieza de SMS", "Se eliminaron " + count + " SMS locales antiguos.",
-                now, now + retentionMillis(context), reason, "Limpieza", ""));
+        entries.add(0, new Entry(SUMMARY_SENDER, "Se eliminaron " + count + " SMS locales antiguos.",
+                "", now, now + retentionMillis(context), reason, "Limpieza", ""));
         trim(entries);
         save(context, entries);
         prefs(context).edit().putInt(KEY_TOTAL, totalDeleted(context) + count).apply();
@@ -71,6 +77,27 @@ final class DeletionLog {
         HistoryExpiryScheduler.scheduleNext(context);
     }
 
+    /** Removes one entry matched by identity. Returns true if something was removed. */
+    static boolean removeEntry(Context context, long time, String sender, String preview) {
+        List<Entry> entries = load(context);
+        for (int i = 0; i < entries.size(); i++) {
+            Entry entry = entries.get(i);
+            if (entry.time == time && entry.sender.equals(sender == null ? "Desconocido" : sender)
+                    && entry.preview.equals(preview == null ? "" : preview)) {
+                entries.remove(i);
+                save(context, entries);
+                HistoryExpiryScheduler.scheduleNext(context);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Summary rows describe cleanups; they are not recoverable messages. */
+    static boolean isSummary(Entry entry) {
+        return entry != null && SUMMARY_SENDER.equals(entry.sender);
+    }
+
     static long retentionMillis(Context context) {
         return prefs(context).getLong(KEY_RETENTION, DEFAULT_RETENTION_MS);
     }
@@ -89,7 +116,9 @@ final class DeletionLog {
 
     static String retentionLabel(Context context) {
         long hours = retentionMillis(context) / ONE_HOUR_MS;
-        return hours == 1 ? "1 hora" : hours + " horas";
+        if (hours == 1) return "1 hora";
+        if (hours == 168) return "7 días";
+        return hours + " horas";
     }
 
     /** Earliest retained entry, used by the cleanup alarm. Long.MAX_VALUE means none. */
@@ -114,7 +143,7 @@ final class DeletionLog {
                 // A lower new setting removes older retained data; a higher setting never restores it.
                 long expiresAt = Math.min(savedExpiry, time + currentLimit);
                 Entry entry = new Entry(item.optString("sender", "Desconocido"),
-                        item.optString("preview", ""), time, expiresAt,
+                        item.optString("preview", ""), item.optString("full", ""), time, expiresAt,
                         item.optString("reason", "Eliminado"), item.optString("label", "Normal"),
                         item.optString("keyword", ""));
                 if (entry.expiresAt > now) result.add(entry);
@@ -132,6 +161,7 @@ final class DeletionLog {
             try {
                 item.put("sender", entry.sender);
                 item.put("preview", entry.preview);
+                item.put("full", entry.full);
                 item.put("time", entry.time);
                 item.put("expiresAt", entry.expiresAt);
                 item.put("reason", entry.reason);
@@ -153,6 +183,12 @@ final class DeletionLog {
         return compact.length() <= 100 ? compact : compact.substring(0, 97) + "…";
     }
 
+    private static String fullBody(String body) {
+        if (body == null) return "";
+        String trimmed = body.trim();
+        return trimmed.length() <= MAX_FULL_CHARS ? trimmed : trimmed.substring(0, MAX_FULL_CHARS);
+    }
+
     private static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
@@ -160,21 +196,28 @@ final class DeletionLog {
     static final class Entry {
         final String sender;
         final String preview;
+        final String full;
         final long time;
         final long expiresAt;
         final String reason;
         final String label;
         final String keyword;
 
-        Entry(String sender, String preview, long time, long expiresAt, String reason,
+        Entry(String sender, String preview, String full, long time, long expiresAt, String reason,
               String label, String keyword) {
             this.sender = sender == null || sender.isEmpty() ? "Desconocido" : sender;
-            this.preview = preview;
+            this.preview = preview == null ? "" : preview;
+            this.full = full == null ? "" : full;
             this.time = time;
             this.expiresAt = expiresAt;
             this.reason = reason;
             this.label = label;
             this.keyword = keyword;
+        }
+
+        /** Entries saved before v19 only have a preview, not the full text. */
+        boolean hasFull() {
+            return !full.isEmpty();
         }
     }
 }

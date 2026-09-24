@@ -12,6 +12,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.DateFormat;
 import java.util.List;
 
 /** Holds all controls and guidance so the inbox can stay intentionally calm. */
@@ -189,13 +190,13 @@ public final class SettingsActivity extends Activity {
             }
         });
         root.addView(exactAlarmButton);
+        Button diagnostics = actionButton("DIAGNÓSTICO DE RECEPCIÓN (¿POR QUÉ NO LLEGAN?)");
+        diagnostics.setOnClickListener(v -> showDiagnostics());
+        root.addView(diagnostics);
 
         root.addView(sectionTitle("Apariencia"));
         themeButton = actionButton("");
-        themeButton.setOnClickListener(v -> {
-            AppState.setDarkMode(this, !dark);
-            recreate();
-        });
+        themeButton.setOnClickListener(v -> showThemePicker());
         root.addView(themeButton);
 
         root.addView(sectionTitle("Ayuda"));
@@ -209,7 +210,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.18.0 beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
+        footer.setText("Versión 0.19.0 beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -280,7 +281,7 @@ public final class SettingsActivity extends Activity {
         } else {
             exactAlarmButton.setText("ALARMAS EXACTAS: PENDIENTE (TOCA PARA ABRIR AJUSTE)");
         }
-        themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
+        themeButton.setText("APARIENCIA: " + AppState.themeLabel(this).toUpperCase());
     }
 
     private void runRefresh() {
@@ -289,6 +290,53 @@ public final class SettingsActivity extends Activity {
         ThemedDialog.message(this, "Estado actualizado", result.summary()
                 + "\n\nLos mensajes enviados siempre se conservan; elimínalos manualmente si lo deseas.",
                 "Entendido");
+    }
+
+    private void showThemePicker() {
+        final int[] values = {AppState.THEME_LIGHT, AppState.THEME_DARK, AppState.THEME_SYSTEM};
+        final String[] labels = {"Claro", "Oscuro", "Automático (según el teléfono)"};
+        int current = AppState.themeMode(this);
+        int checked = 2;
+        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
+        ThemedDialog.singleChoice(this, "Apariencia",
+                "Automático usa el modo claro u oscuro que tengas activado en el teléfono y cambia solo con él.",
+                labels, checked, which -> {
+                    AppState.setThemeMode(this, values[which]);
+                    recreate();
+                });
+    }
+
+    private void showDiagnostics() {
+        String last;
+        long lastAt = AppState.lastSmsReceivedAt(this);
+        if (lastAt <= 0L) {
+            last = "Todavía ninguno desde esta versión";
+        } else {
+            last = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(lastAt);
+        }
+        int pending = DeleteRegistry.all(this).size();
+        String body = "Estado ahora:\n"
+                + "• App SMS predeterminada: " + (isDefaultSmsApp() ? "Sí" : "No") + "\n"
+                + "• Permisos SMS: " + (SetupHelper.hasSmsPermissions(this) ? "OK" : "Faltan") + "\n"
+                + "• Notificaciones: " + (SetupHelper.notificationsEnabled(this) ? "Activadas" : "Bloqueadas") + "\n"
+                + "• Último SMS recibido: " + last + "\n"
+                + "• Borrados programados: " + pending + " pendiente(s)\n"
+                + "• Borrado: " + AppState.retentionLabel(this)
+                + " · Normal:" + yesNo(AppState.shouldDeleteNormal(this))
+                + " Spam:" + yesNo(AppState.shouldDeleteSpam(this))
+                + " Importantes:" + yesNo(AppState.shouldDeleteImportant(this))
+                + "\n\nSobre RCS (chats de Google Mensajes y iPhone):\n"
+                + "Ninguna app que no sea Google Mensajes puede recibir chats RCS: Google no ofrece "
+                + "acceso a terceros. Si alguien te escribe por chat, ese mensaje solo aparece en "
+                + "Google Mensajes, nunca aquí, y tampoco se puede responder desde esta app.\n\n"
+                + "Si quieres recibirlo TODO como SMS en esta app: abre Google Mensajes → tu foto → "
+                + "Ajustes de Mensajes → Chats RCS y desactívalos. Desde ese momento los mensajes "
+                + "llegarán como SMS normales.";
+        ThemedDialog.message(this, "Diagnóstico de recepción", body, "Entendido");
+    }
+
+    private String yesNo(boolean value) {
+        return value ? "Sí" : "No";
     }
 
     private void showSwipePicker(boolean rightSide) {
@@ -404,9 +452,12 @@ public final class SettingsActivity extends Activity {
                 "• Los SMS nuevos se eliminan aproximadamente tras el tiempo elegido, según su tipo (normal, posible spam o importante).\n\n"
                         + "• Los importantes se conservan por defecto; cámbialo en Auto-eliminación por tipo si quieres que también se borren.\n\n"
                         + "• Los SMS que TÚ envías siempre se conservan; elimínalos manualmente cuando quieras.\n\n"
+                        + "• Los chats RCS (Google Mensajes, iPhone) NO pueden llegar a esta app: Google no da acceso a terceros. Usa Diagnóstico de recepción para más detalles.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"
+                        + "• Toca un registro en Eliminados recientemente para recuperarlo a la bandeja o archivarlo antes de que venza.\n\n"
                         + "• Actualizar estado de mensajes programa los entrantes que no tenían cuenta atrás y aplica tus ajustes actuales.\n\n"
+                        + "• En Apariencia puedes usar Claro, Oscuro o Automático (sigue el modo del teléfono).\n\n"
                         + "• Puedes tocar Conservar desde la notificación o desde una conversación para evitar que un mensaje se borre.\n\n"
                         + "• Puedes bloquear remitentes desde una conversación. Sus próximos SMS se descartan localmente sin notificación.\n\n"
                         + "• En SIM y envío puedes ver las SIM activas, el número que el operador exponga y elegir la SIM para SMS salientes.\n\n"
