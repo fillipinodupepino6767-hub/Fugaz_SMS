@@ -85,6 +85,7 @@
         </receiver>
 
         <receiver android:name=".DeleteAlarmReceiver" android:exported="false" />
+        <receiver android:name=".HistoryExpiryReceiver" android:exported="false" />
         <receiver android:name=".SentSmsReceiver" android:exported="false" />
         <receiver android:name=".KeepSmsReceiver" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="false">

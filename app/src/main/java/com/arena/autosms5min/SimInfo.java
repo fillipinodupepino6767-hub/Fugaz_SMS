@@ -54,8 +54,10 @@ final class SimInfo {
                             .createForSubscriptionId(info.getSubscriptionId());
                     number = telephony.getLine1Number();
                 }
+                boolean systemNumber = number != null && !number.trim().isEmpty();
+                if (!systemNumber) number = AppState.manualSimNumber(context, info.getSubscriptionId());
                 if (number == null || number.trim().isEmpty()) number = "No disponible en la SIM";
-                cards.add(new Card(info.getSubscriptionId(), info.getSimSlotIndex(), name, carrier, number));
+                cards.add(new Card(info.getSubscriptionId(), info.getSimSlotIndex(), name, carrier, number, systemNumber));
             }
             return cards;
         } catch (SecurityException ignored) {
@@ -69,17 +71,23 @@ final class SimInfo {
         final String name;
         final String carrier;
         final String number;
+        final boolean numberReportedBySystem;
 
-        Card(int subscriptionId, int slotIndex, String name, String carrier, String number) {
+        Card(int subscriptionId, int slotIndex, String name, String carrier, String number,
+             boolean numberReportedBySystem) {
             this.subscriptionId = subscriptionId;
             this.slotIndex = slotIndex;
             this.name = name;
             this.carrier = carrier;
             this.number = number;
+            this.numberReportedBySystem = numberReportedBySystem;
         }
 
         String label() {
-            return "SIM " + (slotIndex + 1) + " · " + name + "\nOperador: " + carrier + "\nNúmero: " + number;
+            String source = numberReportedBySystem ? "SIM / operador" :
+                    ("No disponible en la SIM".equals(number) ? "no informado" : "guardado en la app");
+            return "SIM " + (slotIndex + 1) + " · " + name + "\nOperador: " + carrier
+                    + "\nNúmero: " + number + " (" + source + ")";
         }
     }
 }

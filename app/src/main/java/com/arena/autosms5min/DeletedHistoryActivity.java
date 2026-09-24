@@ -22,6 +22,7 @@ public final class DeletedHistoryActivity extends Activity {
     private TextView subtitle;
     private ListView list;
     private TextView empty;
+    private Button retention;
     private ArrayAdapter<String> adapter;
 
     @Override
@@ -67,8 +68,17 @@ public final class DeletedHistoryActivity extends Activity {
 
         subtitle = new TextView(this);
         subtitle.setTextColor(ThemeColors.secondaryText(dark));
-        subtitle.setPadding(dp(4), 0, dp(4), dp(8));
+        subtitle.setPadding(dp(4), 0, dp(4), dp(4));
         root.addView(subtitle);
+
+        retention = new Button(this);
+        retention.setAllCaps(false);
+        retention.setTextColor(ThemeColors.accent(dark));
+        retention.setBackgroundColor(ThemeColors.incomingBubble(dark));
+        retention.setGravity(Gravity.CENTER);
+        retention.setOnClickListener(v -> chooseRetention());
+        root.addView(retention, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         list = new ListView(this);
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<>()) {
@@ -98,19 +108,44 @@ public final class DeletedHistoryActivity extends Activity {
 
     private void refresh() {
         List<DeletionLog.Entry> entries = DeletionLog.entries(this);
-        subtitle.setText(DeletionLog.totalDeleted(this) + " mensajes eliminados en total · Vista previa disponible durante 24 horas");
+        String period = DeletionLog.retentionLabel(this);
+        subtitle.setText(DeletionLog.totalDeleted(this) + " mensajes eliminados en total · El registro no es una copia de seguridad.");
+        retention.setText("Conservar vistas previas: " + period + "  ›");
         List<String> rows = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         for (DeletionLog.Entry entry : entries) {
             String tag = entry.keyword.isEmpty() ? entry.label : entry.label + " · “" + entry.keyword + "”";
             rows.add(entry.sender + "\n[" + tag + "] · " + entry.reason + "\n"
-                    + entry.preview + "\n" + format.format(entry.time));
+                    + entry.preview + "\nEliminado: " + format.format(entry.time)
+                    + " · Se borra del historial: " + format.format(entry.expiresAt));
         }
         adapter.clear();
         adapter.addAll(rows);
         adapter.notifyDataSetChanged();
         list.setVisibility(rows.isEmpty() ? View.GONE : View.VISIBLE);
+        empty.setText("No hay eliminaciones recientes.\nLas vistas previas se borran definitivamente después de "
+                + DeletionLog.retentionLabel(this) + ".");
         empty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private void chooseRetention() {
+        final String[] labels = {"1 hora", "6 horas", "12 horas", "24 horas", "72 horas", "7 días"};
+        final long[] values = {DeletionLog.ONE_HOUR_MS, 6L * DeletionLog.ONE_HOUR_MS,
+                12L * DeletionLog.ONE_HOUR_MS, 24L * DeletionLog.ONE_HOUR_MS,
+                72L * DeletionLog.ONE_HOUR_MS, 168L * DeletionLog.ONE_HOUR_MS};
+        int checked = 3;
+        long current = DeletionLog.retentionMillis(this);
+        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
+        new AlertDialog.Builder(this)
+                .setTitle("Tiempo de eliminados recientemente")
+                .setMessage("Las vistas previas se eliminan definitivamente al vencer este plazo. Reducirlo puede borrar entradas existentes; aumentarlo no recupera entradas ya eliminadas.")
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    DeletionLog.setRetentionMillis(this, values[which]);
+                    dialog.dismiss();
+                    refresh();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     private void confirmClear() {

@@ -10,6 +10,7 @@ final class AppState {
     private static final String KEY_DARK_MODE = "dark_mode";
     private static final String KEY_RETENTION_MS = "retention_ms";
     private static final String KEY_OUTGOING_SUBSCRIPTION_ID = "outgoing_subscription_id";
+    private static final String KEY_SIM_NUMBER_PREFIX = "manual_sim_number_";
     static final long ONE_MINUTE = 60_000L;
     static final long FIVE_MINUTES = 5L * ONE_MINUTE;
     static final long TEN_MINUTES = 10L * ONE_MINUTE;
@@ -69,6 +70,19 @@ final class AppState {
 
     static void setOutgoingSubscriptionId(Context context, int subscriptionId) {
         prefs(context).edit().putInt(KEY_OUTGOING_SUBSCRIPTION_ID, subscriptionId).apply();
+    }
+
+    /** Optional display fallback only; it does not write to or alter the SIM card. */
+    static String manualSimNumber(Context context, int subscriptionId) {
+        return prefs(context).getString(KEY_SIM_NUMBER_PREFIX + subscriptionId, "");
+    }
+
+    static void setManualSimNumber(Context context, int subscriptionId, String number) {
+        String cleaned = number == null ? "" : number.trim();
+        SharedPreferences.Editor editor = prefs(context).edit();
+        if (cleaned.isEmpty()) editor.remove(KEY_SIM_NUMBER_PREFIX + subscriptionId);
+        else editor.putString(KEY_SIM_NUMBER_PREFIX + subscriptionId, cleaned);
+        editor.apply();
     }
 
     private static SharedPreferences prefs(Context context) {

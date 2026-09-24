@@ -15,5 +15,7 @@ public final class BootReceiver extends BroadcastReceiver {
         for (Map.Entry<Long, Long> entry : DeleteRegistry.all(context).entrySet()) {
             DeleteScheduler.schedule(context, entry.getKey(), Math.max(now + 1_000L, entry.getValue()));
         }
+        DeletionLog.pruneExpired(context);
+        HistoryExpiryScheduler.scheduleNext(context);
     }
 }

@@ -2,8 +2,12 @@ package com.arena.autosms5min;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.provider.Settings;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.widget.Button;
@@ -69,6 +73,10 @@ public final class SimSettingsActivity extends Activity {
         allow.setOnClickListener(v -> requestPermissionsIfNeeded());
         root.addView(allow);
 
+        Button systemSimSettings = actionButton("ABRIR AJUSTES DEL SISTEMA: SIM Y NÚMEROS");
+        systemSimSettings.setOnClickListener(v -> openSystemSimSettings());
+        root.addView(systemSimSettings);
+
         Button automatic = actionButton("USAR SIM PREDETERMINADA DEL TELÉFONO");
         automatic.setOnClickListener(v -> {
             AppState.setOutgoingSubscriptionId(this, -1);
@@ -103,7 +111,7 @@ public final class SimSettingsActivity extends Activity {
         int slots = SimInfo.phoneSlotCount(this);
         List<SimInfo.Card> active = SimInfo.activeCards(this);
         status.setText("Ranuras detectadas: " + slots + " · SIM activas: " + active.size()
-                + "\nToca una SIM para usarla al enviar SMS.");
+                + "\nToca una SIM para usarla al enviar SMS. Si el operador no expone su número, abre los ajustes del sistema o guárdalo solo para verlo en esta app.");
         if (active.isEmpty()) {
             TextView none = new TextView(this);
             none.setText("No se detectaron SIM activas.");
@@ -120,7 +128,45 @@ public final class SimSettingsActivity extends Activity {
                 refresh();
             });
             cards.addView(sim);
+            Button editNumber = actionButton("Editar número mostrado para SIM " + (card.slotIndex + 1));
+            editNumber.setTextColor(ThemeColors.secondaryText(dark));
+            editNumber.setOnClickListener(v -> editDisplayedNumber(card));
+            cards.addView(editNumber);
         }
+    }
+
+    private void openSystemSimSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_SIM_CARD_SETTINGS));
+        } catch (ActivityNotFoundException unavailable) {
+            try {
+                startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+            } catch (ActivityNotFoundException ignored) {
+                Toast.makeText(this, "No se encontraron los ajustes de SIM del sistema.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void editDisplayedNumber(SimInfo.Card card) {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_PHONE);
+        String saved = AppState.manualSimNumber(this, card.subscriptionId);
+        input.setText(saved.isEmpty() && card.numberReportedBySystem ? card.number : saved);
+        input.setSelectAllOnFocus(false);
+        new AlertDialog.Builder(this)
+                .setTitle("Número mostrado · SIM " + (card.slotIndex + 1))
+                .setMessage("Este dato solo se guarda para mostrarlo en SMS 5 minutos. No modifica la SIM ni el número de tu operador.")
+                .setView(input)
+                .setNegativeButton("Cancelar", null)
+                .setNeutralButton("Borrar guardado", (dialog, which) -> {
+                    AppState.setManualSimNumber(this, card.subscriptionId, "");
+                    refresh();
+                })
+                .setPositiveButton("Guardar", (dialog, which) -> {
+                    AppState.setManualSimNumber(this, card.subscriptionId, input.getText().toString());
+                    refresh();
+                })
+                .show();
     }
 
     private Button actionButton(String text) {

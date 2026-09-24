@@ -32,6 +32,7 @@ public final class DeleteAlarmReceiver extends BroadcastReceiver {
             NotificationHelper.cancel(context, id);
             if (message != null) {
                 DeletionLog.add(context, message.address, message.body, "Eliminado automáticamente");
+                NotificationHelper.showAutomaticDeletion(context, id, message.body);
             }
         } else {
             // Do not silently forget a message if the provider was temporarily unavailable.

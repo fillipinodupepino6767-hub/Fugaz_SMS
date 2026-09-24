@@ -150,10 +150,13 @@ public final class MainActivity extends Activity {
         emptyState.setBackgroundColor(ThemeColors.background(dark));
 
         ImageView art = new ImageView(this);
-        art.setImageResource(com.arena.autosms5min.R.drawable.empty_inbox);
+        // The illustration is deliberately text-free: the accessible UI text stays below it.
+        art.setImageResource(dark ? R.drawable.empty_inbox_dark : R.drawable.empty_inbox_light);
         art.setContentDescription("Bandeja limpia");
+        art.setScaleType(ImageView.ScaleType.FIT_CENTER);
         art.setAdjustViewBounds(true);
-        emptyState.addView(art, new LinearLayout.LayoutParams(dp(210), dp(210)));
+        emptyState.addView(art, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(280)));
 
         TextView emptyTitle = new TextView(this);
         emptyTitle.setText("Sin mensajes");
