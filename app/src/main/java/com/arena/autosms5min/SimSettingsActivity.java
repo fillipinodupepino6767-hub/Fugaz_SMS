@@ -21,6 +21,9 @@ import java.util.List;
 /** Lets the user inspect active SIMs and select the SIM used for outgoing text SMS. */
 public final class SimSettingsActivity extends Activity {
     private static final int REQUEST_SIM_PERMISSIONS = 501;
+    // Public SDKs do not expose this action as a Settings constant on every compile SDK.
+    // The literal keeps the direct Motorola/Android SIM screen optional and safely falls back.
+    private static final String ACTION_SIM_CARD_SETTINGS = "android.settings.SIM_CARD_SETTINGS";
     private boolean dark;
     private LinearLayout cards;
     private TextView status;
@@ -137,7 +140,7 @@ public final class SimSettingsActivity extends Activity {
 
     private void openSystemSimSettings() {
         try {
-            startActivity(new Intent(Settings.ACTION_SIM_CARD_SETTINGS));
+            startActivity(new Intent(ACTION_SIM_CARD_SETTINGS));
         } catch (ActivityNotFoundException unavailable) {
             try {
                 startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
