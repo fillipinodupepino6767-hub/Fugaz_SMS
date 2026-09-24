@@ -2,6 +2,9 @@ package com.arena.autosms5min;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -62,6 +65,10 @@ public final class DeletedHistoryActivity extends Activity {
         Button clear = new Button(this);
         clear.setText("VACIAR");
         clear.setTextColor(ThemeColors.accent(dark));
+        clear.setTextSize(14);
+        clear.setAllCaps(false);
+        // Avoid the default white Material button against the dark interface.
+        clear.setBackground(roundedBackground(ThemeColors.incomingBubble(dark), 10));
         clear.setOnClickListener(v -> confirmClear());
         toolbar.addView(clear);
         root.addView(toolbar);
@@ -128,24 +135,79 @@ public final class DeletedHistoryActivity extends Activity {
         empty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
+    /**
+     * Uses our own themed option sheet. The platform's light single-choice rows
+     * became invisible on some Motorola dark-mode combinations.
+     */
     private void chooseRetention() {
         final String[] labels = {"1 hora", "6 horas", "12 horas", "24 horas", "72 horas", "7 días"};
         final long[] values = {DeletionLog.ONE_HOUR_MS, 6L * DeletionLog.ONE_HOUR_MS,
                 12L * DeletionLog.ONE_HOUR_MS, 24L * DeletionLog.ONE_HOUR_MS,
                 72L * DeletionLog.ONE_HOUR_MS, 168L * DeletionLog.ONE_HOUR_MS};
-        int checked = 3;
-        long current = DeletionLog.retentionMillis(this);
-        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
-        new AlertDialog.Builder(this)
-                .setTitle("Tiempo de eliminados recientemente")
-                .setMessage("Las vistas previas se eliminan definitivamente al vencer este plazo. Reducirlo puede borrar entradas existentes; aumentarlo no recupera entradas ya eliminadas.")
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    DeletionLog.setRetentionMillis(this, values[which]);
-                    dialog.dismiss();
-                    refresh();
-                })
-                .setNegativeButton("Cancelar", null)
-                .show();
+        final long current = DeletionLog.retentionMillis(this);
+
+        final Dialog chooser = new Dialog(this);
+        chooser.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(22), dp(22), dp(22), dp(14));
+        card.setBackground(roundedBackground(ThemeColors.incomingBubble(dark), 18));
+
+        TextView heading = new TextView(this);
+        heading.setText("Tiempo de eliminados recientemente");
+        heading.setTextSize(22);
+        heading.setTextColor(ThemeColors.primaryText(dark));
+        card.addView(heading);
+
+        TextView explanation = new TextView(this);
+        explanation.setText("Elige cuánto tiempo conservar las vistas previas. Al vencer, se eliminan definitivamente. Reducir el tiempo puede borrar entradas existentes; aumentarlo no recupera las ya eliminadas.");
+        explanation.setTextSize(16);
+        explanation.setTextColor(ThemeColors.secondaryText(dark));
+        explanation.setPadding(0, dp(10), 0, dp(12));
+        card.addView(explanation);
+
+        for (int i = 0; i < labels.length; i++) {
+            final long selectedValue = values[i];
+            Button option = new Button(this);
+            boolean selected = selectedValue == current;
+            option.setAllCaps(false);
+            option.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            option.setText((selected ? "✓  " : "○  ") + labels[i]
+                    + (selected ? "  · actual" : ""));
+            option.setTextSize(16);
+            option.setTextColor(ThemeColors.accent(dark));
+            option.setBackground(roundedBackground(selected ? ThemeColors.sentBubble(dark)
+                    : ThemeColors.background(dark), 10));
+            LinearLayout.LayoutParams optionParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            optionParams.setMargins(0, dp(3), 0, dp(3));
+            card.addView(option, optionParams);
+            option.setOnClickListener(v -> {
+                DeletionLog.setRetentionMillis(this, selectedValue);
+                chooser.dismiss();
+                refresh();
+            });
+        }
+
+        Button cancel = new Button(this);
+        cancel.setText("Cancelar");
+        cancel.setAllCaps(false);
+        cancel.setTextColor(ThemeColors.accent(dark));
+        cancel.setBackgroundColor(Color.TRANSPARENT);
+        cancel.setOnClickListener(v -> chooser.dismiss());
+        LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cancelParams.gravity = Gravity.END;
+        cancelParams.topMargin = dp(6);
+        card.addView(cancel, cancelParams);
+
+        chooser.setContentView(card);
+        chooser.show();
+        if (chooser.getWindow() != null) {
+            chooser.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            chooser.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(36),
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private void confirmClear() {
@@ -158,6 +220,13 @@ public final class DeletedHistoryActivity extends Activity {
                     refresh();
                 })
                 .show();
+    }
+
+    private GradientDrawable roundedBackground(int color, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radiusDp));
+        return drawable;
     }
 
     private int dp(int value) {
