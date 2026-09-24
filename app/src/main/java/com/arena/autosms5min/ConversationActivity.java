@@ -189,6 +189,11 @@ public final class ConversationActivity extends Activity {
                     delete.setOnClickListener(v -> confirmDelete(item.id));
                     card.addView(delete);
                 }
+            } else {
+                // Sent messages are kept by design, but can be removed deliberately.
+                Button deleteSent = secondaryButton("ELIMINAR ESTE SMS");
+                deleteSent.setOnClickListener(v -> confirmDelete(item.id));
+                card.addView(deleteSent);
             }
             messages.addView(card);
         }

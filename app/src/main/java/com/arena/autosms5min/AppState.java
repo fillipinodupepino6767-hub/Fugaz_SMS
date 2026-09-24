@@ -14,6 +14,12 @@ final class AppState {
     private static final String KEY_DELETE_NORMAL = "delete_normal";
     private static final String KEY_DELETE_SPAM = "delete_spam";
     private static final String KEY_DELETE_IMPORTANT = "delete_important";
+    private static final String KEY_SWIPE_RIGHT = "swipe_right";
+    private static final String KEY_SWIPE_LEFT = "swipe_left";
+    /** Swipe actions for the inbox list. */
+    static final int SWIPE_NOTHING = 0;
+    static final int SWIPE_DELETE = 1;
+    static final int SWIPE_ARCHIVE = 2;
     static final long ONE_MINUTE = 60_000L;
     static final long FIVE_MINUTES = 5L * ONE_MINUTE;
     static final long TEN_MINUTES = 10L * ONE_MINUTE;
@@ -102,6 +108,29 @@ final class AppState {
 
     static void setShouldDeleteImportant(Context context, boolean enabled) {
         prefs(context).edit().putBoolean(KEY_DELETE_IMPORTANT, enabled).apply();
+    }
+
+    /** Gmail-style swipe: right defaults to archive, left defaults to delete. */
+    static int swipeRightAction(Context context) {
+        return prefs(context).getInt(KEY_SWIPE_RIGHT, SWIPE_ARCHIVE);
+    }
+
+    static void setSwipeRightAction(Context context, int action) {
+        prefs(context).edit().putInt(KEY_SWIPE_RIGHT, action).apply();
+    }
+
+    static int swipeLeftAction(Context context) {
+        return prefs(context).getInt(KEY_SWIPE_LEFT, SWIPE_DELETE);
+    }
+
+    static void setSwipeLeftAction(Context context, int action) {
+        prefs(context).edit().putInt(KEY_SWIPE_LEFT, action).apply();
+    }
+
+    static String swipeLabel(int action) {
+        if (action == SWIPE_DELETE) return "Eliminar";
+        if (action == SWIPE_ARCHIVE) return "Archivar";
+        return "Nada";
     }
 
     /** Optional display fallback only; it does not write to or alter the SIM card. */

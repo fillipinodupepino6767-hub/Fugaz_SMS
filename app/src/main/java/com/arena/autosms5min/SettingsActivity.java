@@ -22,9 +22,13 @@ public final class SettingsActivity extends Activity {
     private Button setupButton;
     private Button retentionButton;
     private Button blocklistButton;
+    private Button refreshButton;
+    private Button archivedButton;
     private Button normalDeleteButton;
     private Button spamDeleteButton;
     private Button importantDeleteButton;
+    private Button swipeRightButton;
+    private Button swipeLeftButton;
     private Button notifButton;
     private Button exactAlarmButton;
     private Button deletedHistoryButton;
@@ -118,6 +122,14 @@ public final class SettingsActivity extends Activity {
         deletedHistoryButton.setOnClickListener(v -> startActivity(new Intent(this, DeletedHistoryActivity.class)));
         root.addView(deletedHistoryButton);
 
+        refreshButton = actionButton("ACTUALIZAR ESTADO DE MENSAJES");
+        refreshButton.setOnClickListener(v -> runRefresh());
+        root.addView(refreshButton);
+
+        archivedButton = actionButton("");
+        archivedButton.setOnClickListener(v -> startActivity(new Intent(this, ArchivedActivity.class)));
+        root.addView(archivedButton);
+
         Button cleanup = actionButton("ELIMINAR TODOS LOS SMS ANTERIORES");
         cleanup.setOnClickListener(v -> showLegacyCleanupConfirmation());
         root.addView(cleanup);
@@ -147,6 +159,16 @@ public final class SettingsActivity extends Activity {
             refreshUi();
         });
         root.addView(importantDeleteButton);
+
+        root.addView(sectionTitle("Deslizar en bandeja"));
+        root.addView(noteText("Elige qué hace cada lado al deslizar un mensaje, como en Gmail. "
+                + "También puedes mantener presionado un mensaje para ver sus opciones."));
+        swipeRightButton = actionButton("");
+        swipeRightButton.setOnClickListener(v -> showSwipePicker(true));
+        root.addView(swipeRightButton);
+        swipeLeftButton = actionButton("");
+        swipeLeftButton.setOnClickListener(v -> showSwipePicker(false));
+        root.addView(swipeLeftButton);
 
         root.addView(sectionTitle("Permisos y sistema"));
         notifButton = actionButton("");
@@ -187,7 +209,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.17.0 beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
+        footer.setText("Versión 0.18.0 beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -238,12 +260,17 @@ public final class SettingsActivity extends Activity {
         blocklistButton.setText("NÚMEROS BLOQUEADOS: " + Blocklist.count(this));
         deletedHistoryButton.setText("ELIMINADOS RECIENTEMENTE · AJUSTAR TIEMPO ("
                 + DeletionLog.retentionLabel(this).toUpperCase() + ")");
+        archivedButton.setText("MENSAJES ARCHIVADOS: " + ArchiveStore.count(this));
         normalDeleteButton.setText("BORRAR NORMALES: "
                 + (AppState.shouldDeleteNormal(this) ? "SÍ" : "NO"));
         spamDeleteButton.setText("BORRAR POSIBLE SPAM: "
                 + (AppState.shouldDeleteSpam(this) ? "SÍ" : "NO"));
         importantDeleteButton.setText("BORRAR IMPORTANTES: "
                 + (AppState.shouldDeleteImportant(this) ? "SÍ" : "NO"));
+        swipeRightButton.setText("DESLIZAR A LA DERECHA →: "
+                + AppState.swipeLabel(AppState.swipeRightAction(this)).toUpperCase());
+        swipeLeftButton.setText("DESLIZAR A LA IZQUIERDA ←: "
+                + AppState.swipeLabel(AppState.swipeLeftAction(this)).toUpperCase());
         notifButton.setText("NOTIFICACIONES: "
                 + (SetupHelper.notificationsEnabled(this) ? "ACTIVADAS" : "DESACTIVADAS (TOCA PARA ABRIR AJUSTES)"));
         if (!SetupHelper.needsExactAlarmCheck()) {
@@ -254,6 +281,30 @@ public final class SettingsActivity extends Activity {
             exactAlarmButton.setText("ALARMAS EXACTAS: PENDIENTE (TOCA PARA ABRIR AJUSTE)");
         }
         themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
+    }
+
+    private void runRefresh() {
+        MessageMaintenance.Result result = MessageMaintenance.refreshAll(this);
+        refreshUi();
+        ThemedDialog.message(this, "Estado actualizado", result.summary()
+                + "\n\nLos mensajes enviados siempre se conservan; elimínalos manualmente si lo deseas.",
+                "Entendido");
+    }
+
+    private void showSwipePicker(boolean rightSide) {
+        final int[] values = {AppState.SWIPE_NOTHING, AppState.SWIPE_DELETE, AppState.SWIPE_ARCHIVE};
+        final String[] labels = {"Nada (desactivar ese lado)", "Eliminar", "Archivar"};
+        int current = rightSide ? AppState.swipeRightAction(this) : AppState.swipeLeftAction(this);
+        int checked = 0;
+        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
+        ThemedDialog.singleChoice(this,
+                rightSide ? "Deslizar a la derecha" : "Deslizar a la izquierda",
+                "Elige qué ocurre al deslizar un mensaje de la bandeja hacia ese lado.",
+                labels, checked, which -> {
+                    if (rightSide) AppState.setSwipeRightAction(this, values[which]);
+                    else AppState.setSwipeLeftAction(this, values[which]);
+                    refreshUi();
+                });
     }
 
     private void showDefaultSmsWarning() {
@@ -352,11 +403,14 @@ public final class SettingsActivity extends Activity {
         ThemedDialog.message(this, "Cómo funciona",
                 "• Los SMS nuevos se eliminan aproximadamente tras el tiempo elegido, según su tipo (normal, posible spam o importante).\n\n"
                         + "• Los importantes se conservan por defecto; cámbialo en Auto-eliminación por tipo si quieres que también se borren.\n\n"
+                        + "• Los SMS que TÚ envías siempre se conservan; elimínalos manualmente cuando quieras.\n\n"
+                        + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
+                        + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"
+                        + "• Actualizar estado de mensajes programa los entrantes que no tenían cuenta atrás y aplica tus ajustes actuales.\n\n"
                         + "• Puedes tocar Conservar desde la notificación o desde una conversación para evitar que un mensaje se borre.\n\n"
                         + "• Puedes bloquear remitentes desde una conversación. Sus próximos SMS se descartan localmente sin notificación.\n\n"
                         + "• En SIM y envío puedes ver las SIM activas, el número que el operador exponga y elegir la SIM para SMS salientes.\n\n"
                         + "• Compartir envía el texto a otra app, como WhatsApp o correo; esa app puede usar Wi-Fi o datos, pero no convierte el SMS en un SMS por Wi-Fi.\n\n"
-                        + "• Eliminar SMS anteriores solo borra SMS locales; no elimina respaldos, MMS, RCS, copias del operador ni del remitente.\n\n"
                         + "• Si algo falla (notificaciones, borrado), usa Configuración automática: revisa rol, permisos y alarmas paso a paso.\n\n"
                         + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats RCS.",
                 "Entendido");

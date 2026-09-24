@@ -3,6 +3,22 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.18.0 (v18)
+
+- **Deslizar estilo Gmail:** desliza un mensaje en la bandeja para eliminarlo
+  (rojo) o archivarlo (verde). Cada lado se configura por separado en
+  Configuración → Deslizar en bandeja (Nada / Eliminar / Archivar).
+- **Archivados:** los mensajes archivados se ocultan de la bandeja y no se
+  borran solos. Nueva pantalla Archivados (botón 📦) para verlos, devolverlos
+  a la bandeja o eliminarlos definitivamente.
+- **Borrado manual:** mantén presionado cualquier mensaje de la bandeja para
+  abrirlo, archivarlo o eliminarlo. Los SMS enviados ahora también tienen
+  botón Eliminar en la conversación (se conservan por diseño, pero ya se
+  pueden quitar a mano).
+- **Actualizar estado de mensajes:** nuevo botón que programa los entrantes
+  que no tenían cuenta atrás (por ejemplo, de antes de una actualización),
+  conserva los que tus ajustes digan y limpia programas viejos.
+
 ## Novedades de la versión 0.17.0 (v17)
 
 - **Cuenta atrás en vivo:** la bandeja muestra "Se elimina en X min Y s"

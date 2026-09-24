@@ -18,8 +18,8 @@ android {
         applicationId 'com.arena.autosms5min'
         minSdk 23
         targetSdk 35
-        versionCode 17
-        versionName '0.17.0'
+        versionCode 18
+        versionName '0.18.0'
     }
 
     signingConfigs {
@@ -39,4 +39,9 @@ android {
             if (hasReleaseSigning) signingConfig signingConfigs.release
         }
     }
+}
+
+dependencies {
+    // Gmail-style swipe in the inbox (RecyclerView + ItemTouchHelper).
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
 }

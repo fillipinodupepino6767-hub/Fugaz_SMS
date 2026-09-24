@@ -2,6 +2,10 @@ package com.arena.autosms5min;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,23 +13,26 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Main inbox: intentionally uncluttered; controls live in SettingsActivity. */
+/** Main inbox: swipe to delete/archive like Gmail; everything else lives in Settings. */
 public final class MainActivity extends Activity {
     private static final int REQUEST_SMS_ROLE = 400;
     private final List<SmsStore.SmsItem> shownItems = new ArrayList<>();
-    private ArrayAdapter<String> adapter;
-    private ListView list;
+    private InboxAdapter adapter;
+    private RecyclerView list;
     private LinearLayout emptyState;
     private LinearLayout warningBanner;
     private TextView warningText;
@@ -90,7 +97,7 @@ public final class MainActivity extends Activity {
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(8), dp(10), dp(16), dp(8));
+        toolbar.setPadding(dp(8), dp(10), dp(8), dp(8));
         toolbar.setBackgroundColor(ThemeColors.background(dark));
 
         Button settings = new Button(this);
@@ -117,6 +124,14 @@ public final class MainActivity extends Activity {
         titles.addView(subtitle);
         toolbar.addView(titles, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button archived = new Button(this);
+        archived.setText("\uD83D\uDCE6");
+        archived.setTextSize(20);
+        archived.setContentDescription("Archivados");
+        archived.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        archived.setMinWidth(dp(52));
+        archived.setOnClickListener(v -> startActivity(new Intent(this, ArchivedActivity.class)));
+        toolbar.addView(archived, new LinearLayout.LayoutParams(dp(52), dp(52)));
         Button deletedHistory = new Button(this);
         deletedHistory.setText("⌛");
         deletedHistory.setTextSize(22);
@@ -151,26 +166,14 @@ public final class MainActivity extends Activity {
         warningBanner.addView(repair);
         root.addView(warningBanner);
 
-        list = new ListView(this);
-        list.setDividerHeight(dp(1));
-        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<>()) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                TextView row = (TextView) super.getView(position, convertView, parent);
-                row.setTextColor(ThemeColors.primaryText(dark));
-                row.setTextSize(16);
-                row.setPadding(dp(16), dp(14), dp(16), dp(14));
-                row.setBackgroundColor(ThemeColors.background(dark));
-                return row;
-            }
-        };
-        list.setAdapter(adapter);
-        list.setOnItemClickListener((parent, view, position, id) -> {
-            SmsStore.SmsItem item = shownItems.get(position);
-            Intent conversation = new Intent(this, ConversationActivity.class);
-            conversation.putExtra(ConversationActivity.EXTRA_ADDRESS, item.address);
-            startActivity(conversation);
+        list = new RecyclerView(this);
+        list.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new InboxAdapter(dark, new InboxAdapter.OnItem() {
+            @Override public void onClick(int position) { openConversation(position); }
+            @Override public void onLongPress(int position) { showOptions(position); }
         });
+        list.setAdapter(adapter);
+        new ItemTouchHelper(swipeCallback()).attachToRecyclerView(list);
         root.addView(list, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
@@ -209,19 +212,154 @@ public final class MainActivity extends Activity {
         setContentView(root);
     }
 
+    /** Gmail-style swipe. Each side's action is configurable in Settings. */
+    private ItemTouchHelper.SimpleCallback swipeCallback() {
+        return new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public int getMovementFlags(RecyclerView recycler, RecyclerView.ViewHolder holder) {
+                int flags = 0;
+                if (AppState.swipeRightAction(MainActivity.this) != AppState.SWIPE_NOTHING) {
+                    flags |= ItemTouchHelper.RIGHT;
+                }
+                if (AppState.swipeLeftAction(MainActivity.this) != AppState.SWIPE_NOTHING) {
+                    flags |= ItemTouchHelper.LEFT;
+                }
+                return makeMovementFlags(0, flags);
+            }
+
+            @Override
+            public boolean onMove(RecyclerView recycler, RecyclerView.ViewHolder holder,
+                                  RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder holder, int direction) {
+                int position = holder.getBindingAdapterPosition();
+                if (position < 0 || position >= shownItems.size()) {
+                    refresh();
+                    return;
+                }
+                SmsStore.SmsItem item = shownItems.get(position);
+                int action = direction == ItemTouchHelper.RIGHT
+                        ? AppState.swipeRightAction(MainActivity.this)
+                        : AppState.swipeLeftAction(MainActivity.this);
+                if (action == AppState.SWIPE_DELETE) {
+                    deleteMessage(item, "Eliminado por deslizamiento", true);
+                } else if (action == AppState.SWIPE_ARCHIVE) {
+                    archiveMessage(item);
+                }
+                refresh();
+            }
+
+            @Override
+            public void onChildDraw(Canvas canvas, RecyclerView recycler,
+                                    RecyclerView.ViewHolder holder, float dX, float dY,
+                                    int actionState, boolean isActive) {
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX != 0f) {
+                    int action = dX > 0f ? AppState.swipeRightAction(MainActivity.this)
+                            : AppState.swipeLeftAction(MainActivity.this);
+                    if (action != AppState.SWIPE_NOTHING) {
+                        View row = holder.itemView;
+                        boolean delete = action == AppState.SWIPE_DELETE;
+                        Paint background = new Paint();
+                        background.setColor(delete ? Color.rgb(198, 40, 40) : Color.rgb(46, 125, 50));
+                        if (dX > 0f) {
+                            canvas.drawRect(row.getLeft(), row.getTop(), row.getLeft() + dX,
+                                    row.getBottom(), background);
+                        } else {
+                            canvas.drawRect(row.getRight() + dX, row.getTop(), row.getRight(),
+                                    row.getBottom(), background);
+                        }
+                        Paint label = new Paint();
+                        label.setColor(Color.WHITE);
+                        label.setTextSize(dp(16));
+                        label.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+                        String text = delete ? "ELIMINAR" : "ARCHIVAR";
+                        float centerY = row.getTop() + row.getHeight() / 2f + dp(6);
+                        if (dX > 0f) {
+                            canvas.drawText(text, row.getLeft() + dp(20), centerY, label);
+                        } else {
+                            float width = label.measureText(text);
+                            canvas.drawText(text, row.getRight() - dp(20) - width, centerY, label);
+                        }
+                    }
+                }
+                super.onChildDraw(canvas, recycler, holder, dX, dY, actionState, isActive);
+            }
+        };
+    }
+
+    private void openConversation(int position) {
+        if (position < 0 || position >= shownItems.size()) return;
+        Intent conversation = new Intent(this, ConversationActivity.class);
+        conversation.putExtra(ConversationActivity.EXTRA_ADDRESS, shownItems.get(position).address);
+        startActivity(conversation);
+    }
+
+    private void showOptions(int position) {
+        if (position < 0 || position >= shownItems.size()) return;
+        SmsStore.SmsItem item = shownItems.get(position);
+        ThemedDialog.items(this, item.address, "Elige una acción para este mensaje.",
+                new String[]{"Abrir conversación", "Archivar", "Eliminar este SMS"},
+                "Cancelar", which -> {
+                    if (which == 0) openConversation(position);
+                    else if (which == 1) {
+                        archiveMessage(item);
+                        refresh();
+                    } else {
+                        confirmDelete(item);
+                    }
+                });
+    }
+
+    private void archiveMessage(SmsStore.SmsItem item) {
+        DeleteScheduler.cancel(this, item.id);
+        DeleteRegistry.remove(this, item.id);
+        NotificationHelper.cancel(this, item.id);
+        ArchiveStore.archive(this, item.id);
+        Toast.makeText(this, "Mensaje archivado.", Toast.LENGTH_SHORT).show();
+    }
+
+    private void confirmDelete(SmsStore.SmsItem item) {
+        ThemedDialog.confirm(this, "Eliminar SMS",
+                "¿Eliminar este SMS de " + item.address + "? Esta acción no se puede deshacer.",
+                "Cancelar", "Eliminar", () -> {
+                    deleteMessage(item, "Eliminado manualmente", true);
+                    refresh();
+                });
+    }
+
+    private void deleteMessage(SmsStore.SmsItem item, String reason, boolean toast) {
+        DeleteScheduler.cancel(this, item.id);
+        DeleteRegistry.remove(this, item.id);
+        ArchiveStore.unarchive(this, item.id);
+        int deleted = SmsStore.delete(this, item.id);
+        NotificationHelper.cancel(this, item.id);
+        if (deleted > 0) {
+            DeletionLog.add(this, item.address, item.body, reason);
+        }
+        if (toast) {
+            Toast.makeText(this, deleted > 0 ? "SMS eliminado." : "No se pudo eliminar el SMS.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void refresh() {
         // Keep the scroll position: the 1-second countdown ticker rebuilds the rows.
-        int firstVisible = list.getFirstVisiblePosition();
-        View topChild = list.getChildAt(0);
+        LinearLayoutManager layout = (LinearLayoutManager) list.getLayoutManager();
+        int firstVisible = layout == null ? 0 : layout.findFirstVisibleItemPosition();
+        View topChild = (layout == null) ? null : layout.findViewByPosition(firstVisible);
         int topOffset = topChild == null ? 0 : topChild.getTop();
 
         List<SmsStore.SmsItem> all = SmsStore.allMessages(this);
         shownItems.clear();
-        shownItems.addAll(all);
         List<String> labels = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         boolean neverMode = AppState.retentionMillis(this) == AppState.NEVER;
         for (SmsStore.SmsItem item : all) {
+            if (ArchiveStore.isArchived(this, item.id)) continue;
+            shownItems.add(item);
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
             MessageClassifier.Result classification = MessageClassifier.classify(item.body);
             String countdown = "";
@@ -239,11 +377,9 @@ public final class MainActivity extends Activity {
             labels.add(direction + item.address + "\n[" + classification.display() + "]\n"
                     + item.body + "\n" + format.format(item.date) + countdown);
         }
-        adapter.clear();
-        adapter.addAll(labels);
-        adapter.notifyDataSetChanged();
-        list.setSelectionFromTop(firstVisible, topOffset);
-        boolean hasMessages = !all.isEmpty();
+        adapter.setLabels(labels);
+        if (layout != null && firstVisible >= 0) layout.scrollToPositionWithOffset(firstVisible, topOffset);
+        boolean hasMessages = !shownItems.isEmpty();
         list.setVisibility(hasMessages ? View.VISIBLE : View.GONE);
         emptyState.setVisibility(hasMessages ? View.GONE : View.VISIBLE);
 
@@ -270,5 +406,70 @@ public final class MainActivity extends Activity {
 
     private int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density + .5f);
+    }
+
+    /** Minimal adapter: one styled text row per message. */
+    private static final class InboxAdapter extends RecyclerView.Adapter<InboxAdapter.Holder> {
+        interface OnItem {
+            void onClick(int position);
+            void onLongPress(int position);
+        }
+
+        static final class Holder extends RecyclerView.ViewHolder {
+            final TextView text;
+            Holder(TextView view) {
+                super(view);
+                text = view;
+            }
+        }
+
+        private final List<String> labels = new ArrayList<>();
+        private final boolean dark;
+        private final OnItem listener;
+
+        InboxAdapter(boolean dark, OnItem listener) {
+            this.dark = dark;
+            this.listener = listener;
+        }
+
+        void setLabels(List<String> next) {
+            labels.clear();
+            labels.addAll(next);
+            notifyDataSetChanged();
+        }
+
+        @Override
+        public Holder onCreateViewHolder(ViewGroup parent, int viewType) {
+            TextView row = new TextView(parent.getContext());
+            float density = parent.getContext().getResources().getDisplayMetrics().density;
+            int padH = (int) (16 * density + .5f);
+            int padV = (int) (14 * density + .5f);
+            row.setTextColor(ThemeColors.primaryText(dark));
+            row.setTextSize(16);
+            row.setPadding(padH, padV, padH, padV);
+            row.setBackgroundColor(ThemeColors.background(dark));
+            row.setLayoutParams(new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            return new Holder(row);
+        }
+
+        @Override
+        public void onBindViewHolder(Holder holder, int position) {
+            holder.text.setText(labels.get(position));
+            holder.itemView.setOnClickListener(v -> {
+                int current = holder.getBindingAdapterPosition();
+                if (current >= 0) listener.onClick(current);
+            });
+            holder.itemView.setOnLongClickListener(v -> {
+                int current = holder.getBindingAdapterPosition();
+                if (current >= 0) listener.onLongPress(current);
+                return true;
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return labels.size();
+        }
     }
 }
