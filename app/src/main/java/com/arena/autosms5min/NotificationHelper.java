@@ -13,6 +13,19 @@ final class NotificationHelper {
 
     private NotificationHelper() { }
 
+    /** Creates the channels early so the system notification screen lists them. */
+    static void ensureChannels(Context context) {
+        NotificationManager manager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) createChannels(manager);
+    }
+
+    static boolean areEnabled(Context context) {
+        NotificationManager manager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        return manager != null && manager.areNotificationsEnabled();
+    }
+
     static void showIncoming(Context context, long smsId, String address, String body) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
