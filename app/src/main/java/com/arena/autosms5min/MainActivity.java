@@ -167,7 +167,7 @@ public final class MainActivity extends Activity {
         emptyState.addView(emptyTitle);
 
         TextView emptyBody = new TextView(this);
-        emptyBody.setText("Todo despejado y limpio ✨");
+        emptyBody.setText("Todo despejado y limpio ✨\nTu bandeja se tomó un respiro.");
         emptyBody.setTextColor(ThemeColors.secondaryText(dark));
         emptyBody.setTextSize(16);
         emptyBody.setGravity(Gravity.CENTER);

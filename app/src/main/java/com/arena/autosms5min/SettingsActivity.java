@@ -28,6 +28,7 @@ public final class SettingsActivity extends Activity {
     private Button setupButton;
     private Button retentionButton;
     private Button blocklistButton;
+    private Button deletedHistoryButton;
     private Button themeButton;
 
     @Override
@@ -97,6 +98,10 @@ public final class SettingsActivity extends Activity {
         simSettings.setOnClickListener(v -> startActivity(new Intent(this, SimSettingsActivity.class)));
         root.addView(simSettings);
 
+        deletedHistoryButton = actionButton("");
+        deletedHistoryButton.setOnClickListener(v -> startActivity(new Intent(this, DeletedHistoryActivity.class)));
+        root.addView(deletedHistoryButton);
+
         Button cleanup = actionButton("ELIMINAR TODOS LOS SMS ANTERIORES");
         cleanup.setOnClickListener(v -> showLegacyCleanupConfirmation());
         root.addView(cleanup);
@@ -162,6 +167,8 @@ public final class SettingsActivity extends Activity {
         }
         retentionButton.setText("TIEMPO DE BORRADO: " + AppState.retentionLabel(this).toUpperCase());
         blocklistButton.setText("NÚMEROS BLOQUEADOS: " + Blocklist.count(this));
+        deletedHistoryButton.setText("ELIMINADOS RECIENTEMENTE · AJUSTAR TIEMPO ("
+                + DeletionLog.retentionLabel(this).toUpperCase() + ")");
         themeButton.setText(dark ? "USAR MODO CLARO" : "USAR MODO OSCURO");
     }
 
