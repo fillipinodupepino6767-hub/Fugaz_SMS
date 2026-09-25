@@ -113,7 +113,7 @@ public final class MainActivity extends Activity {
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
         TextView title = new TextView(this);
-        title.setText("SMS 5 minutos");
+        title.setText("Fugaz SMS");
         title.setTextColor(ThemeColors.primaryText(dark));
         title.setTextSize(23);
         subtitle = new TextView(this);

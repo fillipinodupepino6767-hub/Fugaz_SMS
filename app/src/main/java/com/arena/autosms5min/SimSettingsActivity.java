@@ -153,7 +153,7 @@ public final class SimSettingsActivity extends Activity {
         String saved = AppState.manualSimNumber(this, card.subscriptionId);
         String initial = saved.isEmpty() && card.numberReportedBySystem ? card.number : saved;
         ThemedDialog.input(this, "Número mostrado · SIM " + (card.slotIndex + 1),
-                "Este dato solo se guarda para mostrarlo en SMS 5 minutos. No modifica la SIM ni el número de tu operador.",
+                "Este dato solo se guarda para mostrarlo en Fugaz SMS. No modifica la SIM ni el número de tu operador.",
                 initial, android.text.InputType.TYPE_CLASS_PHONE,
                 "Borrar guardado", "Cancelar", "Guardar",
                 () -> {

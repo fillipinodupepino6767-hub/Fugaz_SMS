@@ -1,7 +1,19 @@
-# SMS 5 minutos — proyecto Android
+# Fugaz SMS — proyecto Android
 
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
+
+## Novedades de la versión 0.20.0 (v20)
+
+- **Google Mensajes y RCS:** nueva sección con un botón que abre Google
+  Mensajes directamente y guía paso a paso para pasar los chats a solo SMS
+  (global o por contacto). Si no está instalado, ofrece abrir Play Store.
+- **Aviso en lenguaje simple:** la app explica que solo recibe SMS de texto
+  (señal del celular, sin internet) y no chats por internet (Wi-Fi o datos)
+  como los de Google Mensajes o iPhone. Ideal para quien no sabe qué es RCS.
+- **Nuevo nombre:** la app se renombra con una marca más original y
+  profesional (el paquete técnico no cambia, las actualizaciones siguen
+  funcionando).
 
 ## Novedades de la versión 0.19.0 (v19)
 
@@ -117,11 +129,11 @@ deja de administrar los SMS entrantes.
 3. Conecta el Motorola One Fusion por USB, activa **Opciones de desarrollador →
    Depuración USB**, o genera un APK firmado desde `Build → Generate Signed
    Bundle / APK`.
-4. Instala el APK en el teléfono y abre **SMS 5 minutos**.
+4. Instala el APK en el teléfono y abre **Fugaz SMS**.
 5. Pulsa **Configurar como app SMS predeterminada** y acepta el diálogo de
    Android.
 6. Acepta los permisos de recibir, leer y enviar SMS.
-7. En `Ajustes → Apps → SMS 5 minutos → Batería`, elige **Sin restricciones**
+7. En `Ajustes → Apps → Fugaz SMS → Batería`, elige **Sin restricciones**
    / **No optimizar** para reducir retrasos de la alarma.
 8. Envía un SMS de prueba desde otro número. Debe aparecer; a los cinco minutos
    debe desaparecer sin borrar los mensajes enviados ni el resto del hilo.
@@ -146,7 +158,7 @@ No hace falta Android Studio ni Shizuku para esa compilación.
    `.github`). Desde Android es práctico usar Termux con `git` o la interfaz
    web de GitHub en modo escritorio.
 3. Al enviar la rama `main`, abre la pestaña **Actions** del repositorio. El flujo
-   `Compilar APK de SMS 5 minutos` debe iniciarse automáticamente.
+   `Compilar APK de Fugaz SMS` debe iniciarse automáticamente.
 4. Cuando termine con una marca verde, abre la ejecución y descarga el artefacto
    `SMS-5-minutos-debug-APK`. Descomprime el archivo descargado y tendrás
    `app-debug.apk`.

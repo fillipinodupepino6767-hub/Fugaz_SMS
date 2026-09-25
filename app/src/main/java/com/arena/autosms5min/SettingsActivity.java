@@ -1,7 +1,9 @@
 package com.arena.autosms5min;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -18,6 +20,7 @@ import java.util.List;
 /** Holds all controls and guidance so the inbox can stay intentionally calm. */
 public final class SettingsActivity extends Activity {
     private static final int REQUEST_SMS_ROLE = 400;
+    private static final String GOOGLE_MESSAGES_PKG = "com.google.android.apps.messaging";
     private boolean dark;
     private TextView status;
     private Button setupButton;
@@ -194,13 +197,22 @@ public final class SettingsActivity extends Activity {
         diagnostics.setOnClickListener(v -> showDiagnostics());
         root.addView(diagnostics);
 
+        root.addView(sectionTitle("Google Mensajes y RCS"));
+        root.addView(noteText("Esta app solo recibe SMS de texto: los mensajes que llegan con la "
+                + "señal del celular, sin necesidad de internet. No recibe chats por internet "
+                + "(Wi-Fi o datos) como los de Google Mensajes o iPhone: esos solo aparecen en "
+                + "Google Mensajes. Si alguien te escribe por chat y no por SMS, aquí no lo verás."));
+        Button openGm = actionButton("ABRIR GOOGLE MENSAJES (PASAR A SOLO SMS)");
+        openGm.setOnClickListener(v -> showGoogleMessagesGuide());
+        root.addView(openGm);
+
         root.addView(sectionTitle("Apariencia"));
         themeButton = actionButton("");
         themeButton.setOnClickListener(v -> showThemePicker());
         root.addView(themeButton);
 
         root.addView(sectionTitle("Ayuda"));
-        Button howItWorks = actionButton("CÓMO FUNCIONA SMS 5 MINUTOS");
+        Button howItWorks = actionButton("CÓMO FUNCIONA FUGAZ SMS");
         howItWorks.setOnClickListener(v -> showHowItWorks());
         root.addView(howItWorks);
 
@@ -210,7 +222,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.19.0 beta · SMS de texto\nNo sustituye MMS ni chats RCS de Google Mensajes.");
+        footer.setText("Versión 0.20.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -251,7 +263,7 @@ public final class SettingsActivity extends Activity {
     private void refreshUi() {
         boolean isDefault = isDefaultSmsApp();
         if (isDefault) {
-            status.setText("SMS 5 minutos está activa como aplicación SMS predeterminada.");
+            status.setText("Fugaz SMS está activa como aplicación SMS predeterminada.");
             setupButton.setVisibility(View.GONE);
         } else {
             status.setText("Configura esta app como predeterminada para recibir y administrar SMS.");
@@ -331,12 +343,58 @@ public final class SettingsActivity extends Activity {
                 + "Google Mensajes, nunca aquí, y tampoco se puede responder desde esta app.\n\n"
                 + "Si quieres recibirlo TODO como SMS en esta app: abre Google Mensajes → tu foto → "
                 + "Ajustes de Mensajes → Chats RCS y desactívalos. Desde ese momento los mensajes "
-                + "llegarán como SMS normales.";
+                + "llegarán como SMS normales. También puedes usar el botón Abrir Google Mensajes de esta pantalla.";
         ThemedDialog.message(this, "Diagnóstico de recepción", body, "Entendido");
     }
 
     private String yesNo(boolean value) {
         return value ? "Sí" : "No";
+    }
+
+    /**
+     * No API exists to link with Google Messages, so this opens it directly and
+     * guides the user to switch chats to SMS-only. Falls back to Play Store.
+     */
+    private void showGoogleMessagesGuide() {
+        boolean installed;
+        try {
+            installed = getPackageManager().getLaunchIntentForPackage(GOOGLE_MESSAGES_PKG) != null;
+        } catch (Exception e) {
+            installed = false;
+        }
+        String steps = "Para que tus mensajes lleguen como SMS a esta app:\n\n"
+                + "1. Abre Google Mensajes.\n"
+                + "2. Toca tu foto de perfil → Ajustes de Mensajes.\n"
+                + "3. Entra a Chats RCS y DESACTÍVALOS.\n\n"
+                + "Para una sola persona: abre su chat en Google Mensajes, toca su nombre arriba "
+                + "y elige Solo enviar SMS/MMS.\n\n"
+                + "Nota honesta: ninguna app puede conectarse por dentro con Google Mensajes; "
+                + "este botón solo la abre para que hagas el ajuste tú.";
+        if (installed) {
+            ThemedDialog.confirm(this, "Pasar Google Mensajes a solo SMS", steps,
+                    "Cerrar", "Abrir Google Mensajes", () -> {
+                        Intent launch = getPackageManager().getLaunchIntentForPackage(GOOGLE_MESSAGES_PKG);
+                        if (launch != null) startActivity(launch);
+                        else {
+                            Toast.makeText(this, "No se pudo abrir Google Mensajes.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+        } else {
+            ThemedDialog.confirm(this, "Google Mensajes no está instalado",
+                    "Google Mensajes no está instalado en este teléfono. Instálalo para poder "
+                            + "ajustar el RCS, o pide a tus contactos que te escriban por SMS.\n\n" + steps,
+                    "Cerrar", "Abrir Play Store", () -> openPlayStore(GOOGLE_MESSAGES_PKG));
+        }
+    }
+
+    private void openPlayStore(String pkg) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg)));
+        } catch (ActivityNotFoundException noMarket) {
+            startActivity(new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=" + pkg)));
+        }
     }
 
     private void showSwipePicker(boolean rightSide) {
@@ -357,10 +415,10 @@ public final class SettingsActivity extends Activity {
 
     private void showDefaultSmsWarning() {
         ThemedDialog.confirm(this,
-                "Usar SMS 5 minutos como app predeterminada",
+                "Usar Fugaz SMS como app predeterminada",
                 "Esta app debe ser la aplicación SMS predeterminada para recibir y administrar SMS. "
                         + "Los SMS nuevos se eliminarán según el tiempo elegido; puedes conservarlos desde la notificación o conversación. "
-                        + "Esta versión beta gestiona SMS de texto, no MMS ni chats RCS de Google Mensajes.",
+                        + "Esta versión beta gestiona SMS de texto, no MMS ni chats por internet (RCS de Google Mensajes o iPhone).",
                 "Cancelar", "Continuar", () -> requestSmsRole());
     }
 
@@ -433,7 +491,7 @@ public final class SettingsActivity extends Activity {
         }
         ThemedDialog.confirm(this, "Eliminar " + count + " SMS anteriores",
                 "Esto borrará de la base local de Android todos los SMS anteriores al momento en que empezaste a usar esta app. "
-                        + "Incluye mensajes recibidos, enviados y borradores antiguos. No elimina copias de seguridad, MMS ni chats RCS.",
+                        + "Incluye mensajes recibidos, enviados y borradores antiguos. No elimina copias de seguridad, MMS ni chats por internet.",
                 "Cancelar", "Continuar", () -> showFinalLegacyCleanupConfirmation(count, cutoff));
     }
 
@@ -452,7 +510,7 @@ public final class SettingsActivity extends Activity {
                 "• Los SMS nuevos se eliminan aproximadamente tras el tiempo elegido, según su tipo (normal, posible spam o importante).\n\n"
                         + "• Los importantes se conservan por defecto; cámbialo en Auto-eliminación por tipo si quieres que también se borren.\n\n"
                         + "• Los SMS que TÚ envías siempre se conservan; elimínalos manualmente cuando quieras.\n\n"
-                        + "• Los chats RCS (Google Mensajes, iPhone) NO pueden llegar a esta app: Google no da acceso a terceros. Usa Diagnóstico de recepción para más detalles.\n\n"
+                        + "• Esta app solo recibe SMS de texto (señal del celular, sin internet). Los chats por internet — Wi-Fi o datos — de Google Mensajes o iPhone NO pueden llegar aquí: Google no da acceso a otras apps. Usa el botón Abrir Google Mensajes para pasarlos a solo SMS, o Diagnóstico de recepción para más detalles.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"
                         + "• Toca un registro en Eliminados recientemente para recuperarlo a la bandeja o archivarlo antes de que venza.\n\n"
@@ -463,7 +521,7 @@ public final class SettingsActivity extends Activity {
                         + "• En SIM y envío puedes ver las SIM activas, el número que el operador exponga y elegir la SIM para SMS salientes.\n\n"
                         + "• Compartir envía el texto a otra app, como WhatsApp o correo; esa app puede usar Wi-Fi o datos, pero no convierte el SMS en un SMS por Wi-Fi.\n\n"
                         + "• Si algo falla (notificaciones, borrado), usa Configuración automática: revisa rol, permisos y alarmas paso a paso.\n\n"
-                        + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats RCS.",
+                        + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats por internet.",
                 "Entendido");
     }
 

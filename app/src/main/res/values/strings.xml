@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SMS 5 minutos</string>
+    <string name="app_name">Fugaz SMS</string>
     <string name="channel_name">SMS entrantes</string>
     <string name="channel_description">Avisos temporales de SMS entrantes</string>
 </resources>
