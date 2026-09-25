@@ -3,6 +3,14 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.20.1 (v20.1)
+
+- **Corrección:** el botón Abrir Google Mensajes decía "no está instalado"
+  aunque sí lo estaba. Causa: desde Android 11 las apps no pueden ver qué
+  otras apps hay instaladas salvo que lo declaren. Se añadió `<queries>` para
+  Google Mensajes en el manifiesto (permiso de visibilidad, no da acceso a
+  datos). Sin cambios de funciones.
+
 ## Novedades de la versión 0.20.0 (v20)
 
 - **Google Mensajes y RCS:** nueva sección con un botón que abre Google

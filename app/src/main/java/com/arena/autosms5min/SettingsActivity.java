@@ -222,7 +222,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.20.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.20.1 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);

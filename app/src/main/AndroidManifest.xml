@@ -14,6 +14,12 @@
     <!-- Android 12+: exact per-SMS delete alarms. If denied, the scheduler falls back to inexact alarms. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <!-- Android 11+: package visibility. Without this, getLaunchIntentForPackage()
+         cannot see Google Messages and wrongly reports it as not installed. -->
+    <queries>
+        <package android:name="com.google.android.apps.messaging" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
