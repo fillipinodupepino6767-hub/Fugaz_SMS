@@ -239,7 +239,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.21.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.22.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -539,6 +539,8 @@ public final class SettingsActivity extends Activity {
                         + "• La bandeja muestra el nombre y la foto de tus contactos si das el permiso; si no, verás los números como siempre.\n\n"
                         + "• Usa el buscador de la bandeja para filtrar por nombre, número o texto, y el de cada conversación para encontrar un mensaje.\n\n"
                         + "• Si no escuchas avisos, usa Probar sonido de notificación: si la prueba suena, el problema es del volumen o de otra app, no de Fugaz SMS.\n\n"
+                        + "• El clasificador detecta promos (cupones, adelantos de saldo, descuentos, enlaces) como posible spam aunque mencionen saldo o bancos; los códigos y alertas de fraude siguen siendo importantes.\n\n"
+                        + "• Al bloquear un número puedes borrar también sus mensajes existentes de una vez; si una conversación queda vacía, se cierra sola.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"
                         + "• Toca un registro en Eliminados recientemente para recuperarlo a la bandeja o archivarlo antes de que venza.\n\n"

@@ -3,6 +3,19 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.22.0 (v22)
+
+- **Clasificador en 3 niveles:** los códigos, seguridad, salud y alertas de
+  fraude siempre ganan como importantes; luego se detecta spam/promos
+  (nuevas palabras: cupón, adelanto, recargue, canje, puntos, off,
+  publicidad); palabras como saldo o banco solo marcan importante si no hay
+  señal de promo. Las promos de operadora ya no se quedan conservadas.
+- **Bloquear + borrar de una vez:** al bloquear un número se ofrece eliminar
+  sus mensajes existentes (van a Eliminados recientemente por seguridad).
+- **La conversación vacía se cierra sola** al eliminar su último mensaje, y
+  ahora tiene botón atrás (‹) propio.
+- La ayuda de clasificación explica los 3 niveles y el orden de prioridad.
+
 ## Novedades de la versión 0.21.0 (v21)
 
 - **Nombres y fotos de contactos:** la bandeja, conversaciones,

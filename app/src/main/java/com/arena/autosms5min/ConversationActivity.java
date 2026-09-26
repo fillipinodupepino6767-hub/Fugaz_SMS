@@ -30,6 +30,7 @@ public final class ConversationActivity extends Activity {
     private ImageView photoView;
     private TextView heading;
     private TextView resultCount;
+    private Button blockButton;
     private String query = "";
     private boolean dark;
     private final Handler countdownHandler = new Handler(Looper.getMainLooper());
@@ -77,6 +78,14 @@ public final class ConversationActivity extends Activity {
         LinearLayout headerRow = new LinearLayout(this);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        Button back = new Button(this);
+        back.setText("‹");
+        back.setTextSize(32);
+        back.setTextColor(ThemeColors.accent(dark));
+        back.setContentDescription("Volver");
+        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        back.setOnClickListener(v -> finish());
+        headerRow.addView(back, new LinearLayout.LayoutParams(dp(48), dp(56)));
         photoView = new ImageView(this);
         photoView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         LinearLayout.LayoutParams photoParams = new LinearLayout.LayoutParams(dp(56), dp(56));
@@ -90,16 +99,16 @@ public final class ConversationActivity extends Activity {
         root.addView(headerRow);
         updateHeader();
 
-        Button blockSender = secondaryButton(
+        blockButton = secondaryButton(
                 Blocklist.isBlocked(this, address) ? "DESBLOQUEAR NÚMERO" : "BLOQUEAR NÚMERO");
-        blockSender.setOnClickListener(v -> {
+        blockButton.setOnClickListener(v -> {
             if (Blocklist.isBlocked(this, address)) {
                 confirmUnblockSender();
             } else {
                 confirmBlockSender();
             }
         });
-        root.addView(blockSender);
+        root.addView(blockButton);
 
         LinearLayout searchRow = new LinearLayout(this);
         searchRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -288,10 +297,46 @@ public final class ConversationActivity extends Activity {
                         + " se descartarán inmediatamente, sin notificación y sin aparecer en la bandeja. Esto no bloquea llamadas.",
                 "Cancelar", "Bloquear", () -> {
                     Blocklist.block(this, address);
+                    blockButton.setText("DESBLOQUEAR NÚMERO");
                     Toast.makeText(this, ContactNames.displayName(this, address) + " bloqueado para SMS.",
                             Toast.LENGTH_LONG).show();
-                    recreate();
+                    askDeleteExistingAfterBlock();
                 });
+    }
+
+    /** After blocking, offer to remove the messages already received in one step. */
+    private void askDeleteExistingAfterBlock() {
+        List<SmsStore.SmsItem> existing = SmsStore.messagesForAddress(this, address);
+        if (existing.isEmpty()) return;
+        ThemedDialog.confirm(this, "Eliminar mensajes existentes",
+                "Bloqueado. ¿Eliminar también los " + existing.size() + " SMS que ya tienes de "
+                        + ContactNames.singleLineLabel(this, address)
+                        + "? Se guardarán en Eliminados recientemente por si los necesitas.",
+                "Conservarlos", "Eliminar", () -> deleteAllFromAddress());
+    }
+
+    private void deleteAllFromAddress() {
+        List<SmsStore.SmsItem> existing = SmsStore.messagesForAddress(this, address);
+        int deleted = 0;
+        for (SmsStore.SmsItem item : existing) {
+            DeleteScheduler.cancel(this, item.id);
+            DeleteRegistry.remove(this, item.id);
+            ArchiveStore.unarchive(this, item.id);
+            if (SmsStore.delete(this, item.id) > 0) {
+                deleted++;
+                DeletionLog.add(this, item.address, item.body, "Eliminado manualmente");
+                NotificationHelper.cancel(this, item.id);
+            }
+        }
+        if (SmsStore.messagesForAddress(this, address).isEmpty()) {
+            Toast.makeText(this, deleted + " SMS eliminados. Conversación cerrada.",
+                    Toast.LENGTH_LONG).show();
+            finish();
+        } else {
+            Toast.makeText(this, "Se eliminaron " + deleted + " de " + existing.size() + ".",
+                    Toast.LENGTH_LONG).show();
+            populateMessages();
+        }
     }
 
     private void confirmUnblockSender() {
@@ -300,9 +345,9 @@ public final class ConversationActivity extends Activity {
                         + " volverán a recibirse normalmente.",
                 "Cancelar", "Desbloquear", () -> {
                     Blocklist.unblock(this, address);
+                    blockButton.setText("BLOQUEAR NÚMERO");
                     Toast.makeText(this, ContactNames.displayName(this, address) + " desbloqueado.",
                             Toast.LENGTH_SHORT).show();
-                    recreate();
                 });
     }
 
@@ -330,6 +375,11 @@ public final class ConversationActivity extends Activity {
             DeletionLog.add(this, message.address, message.body, "Eliminado manualmente");
         }
         Toast.makeText(this, deleted > 0 ? "SMS eliminado." : "No se pudo eliminar el SMS.", Toast.LENGTH_SHORT).show();
+        // An empty conversation closes itself instead of lingering with no content.
+        if (deleted > 0 && SmsStore.messagesForAddress(this, address).isEmpty()) {
+            finish();
+            return;
+        }
         populateMessages();
     }
 
