@@ -3,13 +3,18 @@ package com.arena.autosms5min;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.SmsManager;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -22,6 +27,10 @@ public final class ConversationActivity extends Activity {
     public static final String EXTRA_ADDRESS = "address";
     private String address;
     private LinearLayout messages;
+    private ImageView photoView;
+    private TextView heading;
+    private TextView resultCount;
+    private String query = "";
     private boolean dark;
     private final Handler countdownHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownTicker = new Runnable() {
@@ -41,13 +50,13 @@ public final class ConversationActivity extends Activity {
         }
         dark = AppState.isDarkMode(this);
         ThemeColors.applySystemBars(this, dark);
-        setTitle(address);
         buildUi();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        updateHeader();
         populateMessages();
         countdownHandler.removeCallbacks(countdownTicker);
         countdownHandler.postDelayed(countdownTicker, 1_000L);
@@ -65,11 +74,21 @@ public final class ConversationActivity extends Activity {
         root.setPadding(dp(12), dp(12), dp(12), dp(12));
         root.setBackgroundColor(ThemeColors.background(dark));
 
-        TextView heading = new TextView(this);
-        heading.setText(address + "\n" + retentionHint());
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        photoView = new ImageView(this);
+        photoView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        LinearLayout.LayoutParams photoParams = new LinearLayout.LayoutParams(dp(56), dp(56));
+        photoParams.setMargins(0, 0, dp(10), 0);
+        headerRow.addView(photoView, photoParams);
+        heading = new TextView(this);
         heading.setTextSize(18);
         heading.setTextColor(ThemeColors.primaryText(dark));
-        root.addView(heading);
+        headerRow.addView(heading, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        root.addView(headerRow);
+        updateHeader();
 
         Button blockSender = secondaryButton(
                 Blocklist.isBlocked(this, address) ? "DESBLOQUEAR NÚMERO" : "BLOQUEAR NÚMERO");
@@ -81,6 +100,46 @@ public final class ConversationActivity extends Activity {
             }
         });
         root.addView(blockSender);
+
+        LinearLayout searchRow = new LinearLayout(this);
+        searchRow.setOrientation(LinearLayout.HORIZONTAL);
+        searchRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        searchParams.setMargins(0, dp(4), 0, 0);
+        searchRow.setLayoutParams(searchParams);
+        EditText searchBox = new EditText(this);
+        searchBox.setHint("🔎 Buscar en esta conversación");
+        searchBox.setSingleLine(true);
+        searchBox.setHintTextColor(ThemeColors.secondaryText(dark));
+        searchBox.setTextColor(ThemeColors.primaryText(dark));
+        searchBox.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
+        searchBox.setPadding(dp(14), dp(10), dp(14), dp(10));
+        searchBox.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable s) {
+                query = s.toString().trim();
+                populateMessages();
+            }
+        });
+        searchRow.addView(searchBox, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button clearSearch = new Button(this);
+        clearSearch.setText("✕");
+        clearSearch.setTextColor(ThemeColors.accent(dark));
+        clearSearch.setContentDescription("Limpiar búsqueda");
+        clearSearch.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        clearSearch.setOnClickListener(v -> searchBox.setText(""));
+        searchRow.addView(clearSearch, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        root.addView(searchRow);
+
+        resultCount = new TextView(this);
+        resultCount.setTextSize(13);
+        resultCount.setTextColor(ThemeColors.secondaryText(dark));
+        resultCount.setPadding(dp(4), dp(2), dp(4), 0);
+        resultCount.setVisibility(View.GONE);
+        root.addView(resultCount);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(ThemeColors.background(dark));
@@ -120,6 +179,19 @@ public final class ConversationActivity extends Activity {
         setContentView(root);
     }
 
+    /** Shows the contact name and photo when available; falls back to the raw number. */
+    private void updateHeader() {
+        String name = ContactNames.displayName(this, address);
+        setTitle(name);
+        heading.setText(ContactNames.twoLineLabel(this, address) + "\n" + retentionHint());
+        Bitmap image = ContactNames.photo(this, address);
+        if (image != null) {
+            photoView.setImageBitmap(image);
+        } else {
+            photoView.setImageBitmap(ContactNames.letterBitmap(name, dp(56)));
+        }
+    }
+
     private String retentionHint() {
         long retention = AppState.retentionMillis(this);
         if (retention == AppState.NEVER) {
@@ -147,7 +219,12 @@ public final class ConversationActivity extends Activity {
         messages.removeAllViews();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         List<SmsStore.SmsItem> items = SmsStore.messagesForAddress(this, address);
+        String name = ContactNames.displayName(this, address);
+        String lowered = query.toLowerCase();
+        int shown = 0;
         for (SmsStore.SmsItem item : items) {
+            if (!query.isEmpty() && !item.body.toLowerCase().contains(lowered)) continue;
+            shown++;
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setPadding(dp(12), dp(10), dp(12), dp(10));
@@ -159,7 +236,7 @@ public final class ConversationActivity extends Activity {
             card.setLayoutParams(cardParams);
 
             TextView row = new TextView(this);
-            String who = item.type == SmsStore.TYPE_SENT ? "Tú" : address;
+            String who = item.type == SmsStore.TYPE_SENT ? "Tú" : name;
             MessageClassifier.Result classification = MessageClassifier.classify(item.body);
             row.setText(who + "\n[" + classification.display() + "]\n" + item.body + "\n" + format.format(item.date));
             row.setTextSize(16);
@@ -197,24 +274,34 @@ public final class ConversationActivity extends Activity {
             }
             messages.addView(card);
         }
+        if (!query.isEmpty()) {
+            resultCount.setVisibility(View.VISIBLE);
+            resultCount.setText("🔎 " + shown + " de " + items.size() + " coinciden con «" + query + "»");
+        } else {
+            resultCount.setVisibility(View.GONE);
+        }
     }
 
     private void confirmBlockSender() {
-        ThemedDialog.confirm(this, "Bloquear " + address,
-                "Los próximos SMS de este remitente se descartarán inmediatamente, sin notificación y sin aparecer en la bandeja. Esto no bloquea llamadas.",
+        ThemedDialog.confirm(this, "Bloquear " + ContactNames.displayName(this, address),
+                "Los próximos SMS de " + ContactNames.singleLineLabel(this, address)
+                        + " se descartarán inmediatamente, sin notificación y sin aparecer en la bandeja. Esto no bloquea llamadas.",
                 "Cancelar", "Bloquear", () -> {
                     Blocklist.block(this, address);
-                    Toast.makeText(this, address + " bloqueado para SMS.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, ContactNames.displayName(this, address) + " bloqueado para SMS.",
+                            Toast.LENGTH_LONG).show();
                     recreate();
                 });
     }
 
     private void confirmUnblockSender() {
-        ThemedDialog.confirm(this, "Desbloquear " + address,
-                "Los próximos SMS de este remitente volverán a recibirse normalmente.",
+        ThemedDialog.confirm(this, "Desbloquear " + ContactNames.displayName(this, address),
+                "Los próximos SMS de " + ContactNames.singleLineLabel(this, address)
+                        + " volverán a recibirse normalmente.",
                 "Cancelar", "Desbloquear", () -> {
                     Blocklist.unblock(this, address);
-                    Toast.makeText(this, address + " desbloqueado.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, ContactNames.displayName(this, address) + " desbloqueado.",
+                            Toast.LENGTH_SHORT).show();
                     recreate();
                 });
     }
@@ -250,7 +337,8 @@ public final class ConversationActivity extends Activity {
     private void shareMessage(SmsStore.SmsItem item) {
         Intent share = new Intent(Intent.ACTION_SEND);
         share.setType("text/plain");
-        share.putExtra(Intent.EXTRA_TEXT, "SMS de " + item.address + ":\n" + item.body);
+        share.putExtra(Intent.EXTRA_TEXT,
+                "SMS de " + ContactNames.singleLineLabel(this, item.address) + ":\n" + item.body);
         startActivity(Intent.createChooser(share, "Compartir mensaje con"));
     }
 

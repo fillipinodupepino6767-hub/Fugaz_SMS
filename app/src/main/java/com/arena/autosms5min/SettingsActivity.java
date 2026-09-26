@@ -35,6 +35,7 @@ public final class SettingsActivity extends Activity {
     private Button swipeLeftButton;
     private Button notifButton;
     private Button exactAlarmButton;
+    private Button contactsButton;
     private Button deletedHistoryButton;
     private Button themeButton;
 
@@ -193,9 +194,25 @@ public final class SettingsActivity extends Activity {
             }
         });
         root.addView(exactAlarmButton);
+        contactsButton = actionButton("");
+        contactsButton.setOnClickListener(v -> {
+            if (!SetupHelper.hasContactsPermission(this)) {
+                SetupHelper.requestMissingRuntimePermissions(this);
+            } else {
+                Toast.makeText(this, "Permiso de contactos concedido: verás nombres y fotos.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        root.addView(contactsButton);
         Button diagnostics = actionButton("DIAGNÓSTICO DE RECEPCIÓN (¿POR QUÉ NO LLEGAN?)");
         diagnostics.setOnClickListener(v -> showDiagnostics());
         root.addView(diagnostics);
+        Button testSound = actionButton("PROBAR SONIDO DE NOTIFICACIÓN");
+        testSound.setOnClickListener(v -> {
+            NotificationHelper.showTest(this);
+            Toast.makeText(this, "Notificación de prueba enviada.", Toast.LENGTH_SHORT).show();
+        });
+        root.addView(testSound);
 
         root.addView(sectionTitle("Google Mensajes y RCS"));
         root.addView(noteText("Esta app solo recibe SMS de texto: los mensajes que llegan con la "
@@ -222,7 +239,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.20.1 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.21.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -293,6 +310,8 @@ public final class SettingsActivity extends Activity {
         } else {
             exactAlarmButton.setText("ALARMAS EXACTAS: PENDIENTE (TOCA PARA ABRIR AJUSTE)");
         }
+        contactsButton.setText("CONTACTOS (VER NOMBRES Y FOTOS): "
+                + (SetupHelper.hasContactsPermission(this) ? "ACTIVADOS" : "SIN PERMISO (TOCA PARA PEDIRLO)"));
         themeButton.setText("APARIENCIA: " + AppState.themeLabel(this).toUpperCase());
     }
 
@@ -331,6 +350,7 @@ public final class SettingsActivity extends Activity {
                 + "• App SMS predeterminada: " + (isDefaultSmsApp() ? "Sí" : "No") + "\n"
                 + "• Permisos SMS: " + (SetupHelper.hasSmsPermissions(this) ? "OK" : "Faltan") + "\n"
                 + "• Notificaciones: " + (SetupHelper.notificationsEnabled(this) ? "Activadas" : "Bloqueadas") + "\n"
+                + "• Nombres de contactos: " + (SetupHelper.hasContactsPermission(this) ? "Sí" : "No (sin permiso)") + "\n"
                 + "• Último SMS recibido: " + last + "\n"
                 + "• Borrados programados: " + pending + " pendiente(s)\n"
                 + "• Borrado: " + AppState.retentionLabel(this)
@@ -463,17 +483,22 @@ public final class SettingsActivity extends Activity {
                     "Cerrar");
             return;
         }
-        String[] items = senders.toArray(new String[0]);
+        String[] items = new String[senders.size()];
+        for (int i = 0; i < senders.size(); i++) {
+            items[i] = ContactNames.singleLineLabel(this, senders.get(i));
+        }
         ThemedDialog.items(this, "Números bloqueados",
-                "Toca un número para desbloquearlo.", items, "Cerrar", which -> confirmUnblock(items[which]));
+                "Toca un número para desbloquearlo.", items, "Cerrar", which -> confirmUnblock(senders.get(which)));
     }
 
     private void confirmUnblock(String sender) {
-        ThemedDialog.confirm(this, "Desbloquear " + sender,
-                "Los próximos SMS de este remitente volverán a recibirse normalmente.",
+        ThemedDialog.confirm(this, "Desbloquear " + ContactNames.displayName(this, sender),
+                "Los próximos SMS de " + ContactNames.singleLineLabel(this, sender)
+                        + " volverán a recibirse normalmente.",
                 "Cancelar", "Desbloquear", () -> {
                     Blocklist.unblock(this, sender);
-                    Toast.makeText(this, sender + " desbloqueado.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, ContactNames.displayName(this, sender) + " desbloqueado.",
+                            Toast.LENGTH_SHORT).show();
                     refreshUi();
                 });
     }
@@ -511,6 +536,9 @@ public final class SettingsActivity extends Activity {
                         + "• Los importantes se conservan por defecto; cámbialo en Auto-eliminación por tipo si quieres que también se borren.\n\n"
                         + "• Los SMS que TÚ envías siempre se conservan; elimínalos manualmente cuando quieras.\n\n"
                         + "• Esta app solo recibe SMS de texto (señal del celular, sin internet). Los chats por internet — Wi-Fi o datos — de Google Mensajes o iPhone NO pueden llegar aquí: Google no da acceso a otras apps. Usa el botón Abrir Google Mensajes para pasarlos a solo SMS, o Diagnóstico de recepción para más detalles.\n\n"
+                        + "• La bandeja muestra el nombre y la foto de tus contactos si das el permiso; si no, verás los números como siempre.\n\n"
+                        + "• Usa el buscador de la bandeja para filtrar por nombre, número o texto, y el de cada conversación para encontrar un mensaje.\n\n"
+                        + "• Si no escuchas avisos, usa Probar sonido de notificación: si la prueba suena, el problema es del volumen o de otra app, no de Fugaz SMS.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"
                         + "• Toca un registro en Eliminados recientemente para recuperarlo a la bandeja o archivarlo antes de que venza.\n\n"

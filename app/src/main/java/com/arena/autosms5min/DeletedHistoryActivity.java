@@ -149,7 +149,7 @@ public final class DeletedHistoryActivity extends Activity {
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         for (DeletionLog.Entry entry : entries) {
             String tag = entry.keyword.isEmpty() ? entry.label : entry.label + " · \u201C" + entry.keyword + "\u201D";
-            rows.add(entry.sender + "\n[" + tag + "] · " + entry.reason + "\n"
+            rows.add(ContactNames.twoLineLabel(this, entry.sender) + "\n[" + tag + "] · " + entry.reason + "\n"
                     + entry.preview + "\nEliminado: " + format.format(entry.time)
                     + "\nSe borra del historial: " + format.format(entry.expiresAt)
                     + "  (quedan " + CountdownFormatter.formatHistoryRemaining(entry.expiresAt) + ")");
@@ -168,7 +168,7 @@ public final class DeletedHistoryActivity extends Activity {
         if (position < 0 || position >= shownEntries.size()) return;
         DeletionLog.Entry entry = shownEntries.get(position);
         if (DeletionLog.isSummary(entry)) {
-            ThemedDialog.items(this, entry.sender, entry.preview
+            ThemedDialog.items(this, ContactNames.displayName(this, entry.sender), entry.preview
                             + "\n\nEste es un registro informativo de limpieza, no un mensaje recuperable.",
                     new String[]{"Eliminar este registro"}, "Cancelar", which -> {
                         if (which == 0) {
@@ -181,7 +181,7 @@ public final class DeletedHistoryActivity extends Activity {
         String tag = entry.keyword.isEmpty() ? entry.label
                 : entry.label + " · \u201C" + entry.keyword + "\u201D";
         if (entry.hasFull()) {
-            ThemedDialog.items(this, entry.sender,
+            ThemedDialog.items(this, ContactNames.displayName(this, entry.sender),
                     "[" + tag + "] · " + entry.reason + "\n" + entry.preview
                             + "\n\nRecuperar devuelve el mensaje COMPLETO a la app, conservado "
                             + "(sin borrado automático).",
@@ -196,7 +196,7 @@ public final class DeletedHistoryActivity extends Activity {
                         }
                     });
         } else {
-            ThemedDialog.items(this, entry.sender,
+            ThemedDialog.items(this, ContactNames.displayName(this, entry.sender),
                     "Este registro se guardó antes de la función de recuperación y solo conserva "
                             + "una vista previa:\n\n" + entry.preview,
                     new String[]{"Recuperar vista previa a la bandeja", "Eliminar este registro"},

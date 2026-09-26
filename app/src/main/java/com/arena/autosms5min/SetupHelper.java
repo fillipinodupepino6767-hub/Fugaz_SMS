@@ -55,6 +55,13 @@ final class SetupHelper {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
+    /** Optional cosmetic permission: contact names and photos instead of raw numbers. */
+    static boolean hasContactsPermission(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
+        return context.checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
     static boolean notificationsEnabled(Context context) {
         NotificationManager manager =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -105,6 +112,10 @@ final class SetupHelper {
         }
         if (Build.VERSION.SDK_INT >= 33 && !hasNotificationPermission(activity)) {
             missing.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        // Contacts are optional and independent of the SMS role; ask once alongside the rest.
+        if (!hasContactsPermission(activity)) {
+            missing.add(Manifest.permission.READ_CONTACTS);
         }
         if (!missing.isEmpty()) {
             activity.requestPermissions(missing.toArray(new String[0]), REQUEST_RUNTIME);
@@ -166,7 +177,8 @@ final class SetupHelper {
     static void runAutoSetup(Activity activity, int roleRequestCode) {
         boolean smsMissing = isDefaultSms(activity) && !hasSmsPermissions(activity);
         boolean notifMissing = !hasNotificationPermission(activity);
-        if (smsMissing || notifMissing) {
+        boolean contactsMissing = !hasContactsPermission(activity);
+        if (smsMissing || notifMissing || contactsMissing) {
             requestMissingRuntimePermissions(activity);
             ThemedDialog.message(activity, "Permisos solicitados",
                     "Acepta los permisos del sistema. Después vuelve a tocar Configuración automática "

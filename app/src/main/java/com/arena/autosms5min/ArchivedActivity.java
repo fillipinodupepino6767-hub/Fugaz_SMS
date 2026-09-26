@@ -110,7 +110,7 @@ public final class ArchivedActivity extends Activity {
             shownItems.add(item);
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
             MessageClassifier.Result classification = MessageClassifier.classify(item.body);
-            labels.add(direction + item.address + "\n[" + classification.display() + "]\n"
+            labels.add(direction + ContactNames.twoLineLabel(this, item.address) + "\n[" + classification.display() + "]\n"
                     + item.body + "\n" + format.format(item.date));
         }
         adapter.clear();
@@ -131,7 +131,8 @@ public final class ArchivedActivity extends Activity {
     private void showOptions(int position) {
         if (position < 0 || position >= shownItems.size()) return;
         SmsStore.SmsItem item = shownItems.get(position);
-        ThemedDialog.items(this, item.address, "Elige una acción para este mensaje archivado.",
+        ThemedDialog.items(this, ContactNames.displayName(this, item.address),
+                "Elige una acción para este mensaje archivado.",
                 new String[]{"Abrir conversación", "Desarchivar (volver a la bandeja)", "Eliminar definitivamente"},
                 "Cancelar", which -> {
                     if (which == 0) openConversation(position);

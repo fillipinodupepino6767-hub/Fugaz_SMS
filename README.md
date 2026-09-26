@@ -3,6 +3,20 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.21.0 (v21)
+
+- **Nombres y fotos de contactos:** la bandeja, conversaciones,
+  notificaciones, archivados, eliminados y bloqueados muestran el nombre
+  (permiso opcional READ_CONTACTS, pedido junto al resto). Sin permiso, se ven
+  los números como siempre. La bandeja usa avatares de letra estilo Gmail.
+- **Buscador:** en la bandeja (por nombre, número o texto) y dentro de cada
+  conversación (por texto), con contador de resultados.
+- **Probar sonido de notificación:** nuevo botón que envía una notificación de
+  prueba para distinguir un problema de la app de uno del volumen/DND/otra
+  app. Además, las notificaciones ahora piden sonido+vibración explícitos
+  (audibles también en Android 6/7).
+- El diagnóstico muestra el estado del permiso de contactos.
+
 ## Novedades de la versión 0.20.1 (v20.1)
 
 - **Corrección:** el botón Abrir Google Mensajes decía "no está instalado"

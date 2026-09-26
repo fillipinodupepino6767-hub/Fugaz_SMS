@@ -6,14 +6,18 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -27,7 +31,7 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Main inbox: swipe to delete/archive like Gmail; everything else lives in Settings. */
+/** Main inbox: search, swipe to delete/archive like Gmail; everything else lives in Settings. */
 public final class MainActivity extends Activity {
     private static final int REQUEST_SMS_ROLE = 400;
     private final List<SmsStore.SmsItem> shownItems = new ArrayList<>();
@@ -37,6 +41,10 @@ public final class MainActivity extends Activity {
     private LinearLayout warningBanner;
     private TextView warningText;
     private TextView subtitle;
+    private TextView emptyTitle;
+    private TextView emptyBody;
+    private EditText searchBox;
+    private String query = "";
     private boolean dark;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable refreshTicker = new Runnable() {
@@ -166,6 +174,39 @@ public final class MainActivity extends Activity {
         warningBanner.addView(repair);
         root.addView(warningBanner);
 
+        LinearLayout searchRow = new LinearLayout(this);
+        searchRow.setOrientation(LinearLayout.HORIZONTAL);
+        searchRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        searchParams.setMargins(dp(12), 0, dp(12), dp(6));
+        searchRow.setLayoutParams(searchParams);
+        searchBox = new EditText(this);
+        searchBox.setHint("🔎 Buscar por nombre, número o texto");
+        searchBox.setSingleLine(true);
+        searchBox.setHintTextColor(ThemeColors.secondaryText(dark));
+        searchBox.setTextColor(ThemeColors.primaryText(dark));
+        searchBox.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
+        searchBox.setPadding(dp(14), dp(10), dp(14), dp(10));
+        searchBox.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable s) {
+                query = s.toString().trim();
+                refresh();
+            }
+        });
+        searchRow.addView(searchBox, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button clearSearch = new Button(this);
+        clearSearch.setText("✕");
+        clearSearch.setTextColor(ThemeColors.accent(dark));
+        clearSearch.setContentDescription("Limpiar búsqueda");
+        clearSearch.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        clearSearch.setOnClickListener(v -> searchBox.setText(""));
+        searchRow.addView(clearSearch, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        root.addView(searchRow);
+
         list = new RecyclerView(this);
         list.setLayoutManager(new LinearLayoutManager(this));
         adapter = new InboxAdapter(dark, new InboxAdapter.OnItem() {
@@ -192,7 +233,7 @@ public final class MainActivity extends Activity {
         emptyState.addView(art, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(280)));
 
-        TextView emptyTitle = new TextView(this);
+        emptyTitle = new TextView(this);
         emptyTitle.setText("Sin mensajes");
         emptyTitle.setTextColor(ThemeColors.primaryText(dark));
         emptyTitle.setTextSize(24);
@@ -200,7 +241,7 @@ public final class MainActivity extends Activity {
         emptyTitle.setPadding(0, dp(12), 0, dp(4));
         emptyState.addView(emptyTitle);
 
-        TextView emptyBody = new TextView(this);
+        emptyBody = new TextView(this);
         emptyBody.setText("Todo despejado y limpio ✨\nTu bandeja se tomó un respiro.");
         emptyBody.setTextColor(ThemeColors.secondaryText(dark));
         emptyBody.setTextSize(16);
@@ -300,7 +341,8 @@ public final class MainActivity extends Activity {
     private void showOptions(int position) {
         if (position < 0 || position >= shownItems.size()) return;
         SmsStore.SmsItem item = shownItems.get(position);
-        ThemedDialog.items(this, item.address, "Elige una acción para este mensaje.",
+        ThemedDialog.items(this, ContactNames.displayName(this, item.address),
+                "Elige una acción para este mensaje.",
                 new String[]{"Abrir conversación", "Archivar", "Eliminar este SMS"},
                 "Cancelar", which -> {
                     if (which == 0) openConversation(position);
@@ -323,7 +365,8 @@ public final class MainActivity extends Activity {
 
     private void confirmDelete(SmsStore.SmsItem item) {
         ThemedDialog.confirm(this, "Eliminar SMS",
-                "¿Eliminar este SMS de " + item.address + "? Esta acción no se puede deshacer.",
+                "¿Eliminar este SMS de " + ContactNames.singleLineLabel(this, item.address)
+                        + "? Esta acción no se puede deshacer.",
                 "Cancelar", "Eliminar", () -> {
                     deleteMessage(item, "Eliminado manualmente", true);
                     refresh();
@@ -345,6 +388,14 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private boolean matchesQuery(SmsStore.SmsItem item) {
+        if (query.isEmpty()) return true;
+        String lowered = query.toLowerCase();
+        return item.address.toLowerCase().contains(lowered)
+                || item.body.toLowerCase().contains(lowered)
+                || ContactNames.displayName(this, item.address).toLowerCase().contains(lowered);
+    }
+
     private void refresh() {
         // Keep the scroll position: the 1-second countdown ticker rebuilds the rows.
         LinearLayoutManager layout = (LinearLayoutManager) list.getLayoutManager();
@@ -354,13 +405,17 @@ public final class MainActivity extends Activity {
 
         List<SmsStore.SmsItem> all = SmsStore.allMessages(this);
         shownItems.clear();
-        List<String> labels = new ArrayList<>();
+        List<InboxAdapter.Row> rows = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         boolean neverMode = AppState.retentionMillis(this) == AppState.NEVER;
+        int total = 0;
         for (SmsStore.SmsItem item : all) {
             if (ArchiveStore.isArchived(this, item.id)) continue;
+            total++;
+            if (!matchesQuery(item)) continue;
             shownItems.add(item);
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
+            String name = ContactNames.displayName(this, item.address);
             MessageClassifier.Result classification = MessageClassifier.classify(item.body);
             String countdown = "";
             if (item.type == SmsStore.TYPE_INBOX) {
@@ -374,16 +429,27 @@ public final class MainActivity extends Activity {
                     countdown = "\n✓ Conservado · no se borra solo";
                 }
             }
-            labels.add(direction + item.address + "\n[" + classification.display() + "]\n"
-                    + item.body + "\n" + format.format(item.date) + countdown);
+            String text = direction + ContactNames.twoLineLabel(this, item.address)
+                    + "\n[" + classification.display() + "]\n"
+                    + item.body + "\n" + format.format(item.date) + countdown;
+            rows.add(new InboxAdapter.Row(text, ContactNames.avatarLetter(name),
+                    ContactNames.avatarColor(name)));
         }
-        adapter.setLabels(labels);
+        adapter.setRows(rows);
         if (layout != null && firstVisible >= 0) layout.scrollToPositionWithOffset(firstVisible, topOffset);
         boolean hasMessages = !shownItems.isEmpty();
         list.setVisibility(hasMessages ? View.VISIBLE : View.GONE);
         emptyState.setVisibility(hasMessages ? View.GONE : View.VISIBLE);
+        if (!query.isEmpty()) {
+            subtitle.setText("🔎 " + shownItems.size() + " de " + total + " · filtro: «" + query + "»");
+            emptyTitle.setText("Sin resultados");
+            emptyBody.setText("Nada coincide con «" + query + "».\nPrueba con otro nombre, número o palabra.");
+        } else {
+            subtitle.setText("Bandeja temporal · borrado: " + AppState.retentionLabel(this));
+            emptyTitle.setText("Sin mensajes");
+            emptyBody.setText("Todo despejado y limpio ✨\nTu bandeja se tomó un respiro.");
+        }
 
-        subtitle.setText("Bandeja temporal · borrado: " + AppState.retentionLabel(this));
         String problem = SetupHelper.bannerText(this);
         if (problem == null) {
             warningBanner.setVisibility(View.GONE);
@@ -408,22 +474,35 @@ public final class MainActivity extends Activity {
         return (int) (value * getResources().getDisplayMetrics().density + .5f);
     }
 
-    /** Minimal adapter: one styled text row per message. */
+    /** Adapter: one row per message, with a letter avatar plus the styled text. */
     private static final class InboxAdapter extends RecyclerView.Adapter<InboxAdapter.Holder> {
         interface OnItem {
             void onClick(int position);
             void onLongPress(int position);
         }
 
-        static final class Holder extends RecyclerView.ViewHolder {
-            final TextView text;
-            Holder(TextView view) {
-                super(view);
-                text = view;
+        static final class Row {
+            final String text;
+            final String letter;
+            final int color;
+            Row(String text, String letter, int color) {
+                this.text = text;
+                this.letter = letter;
+                this.color = color;
             }
         }
 
-        private final List<String> labels = new ArrayList<>();
+        static final class Holder extends RecyclerView.ViewHolder {
+            final TextView avatar;
+            final TextView text;
+            Holder(View row, TextView avatar, TextView text) {
+                super(row);
+                this.avatar = avatar;
+                this.text = text;
+            }
+        }
+
+        private final List<Row> rows = new ArrayList<>();
         private final boolean dark;
         private final OnItem listener;
 
@@ -432,30 +511,49 @@ public final class MainActivity extends Activity {
             this.listener = listener;
         }
 
-        void setLabels(List<String> next) {
-            labels.clear();
-            labels.addAll(next);
+        void setRows(List<Row> next) {
+            rows.clear();
+            rows.addAll(next);
             notifyDataSetChanged();
         }
 
         @Override
         public Holder onCreateViewHolder(ViewGroup parent, int viewType) {
-            TextView row = new TextView(parent.getContext());
             float density = parent.getContext().getResources().getDisplayMetrics().density;
-            int padH = (int) (16 * density + .5f);
-            int padV = (int) (14 * density + .5f);
-            row.setTextColor(ThemeColors.primaryText(dark));
-            row.setTextSize(16);
-            row.setPadding(padH, padV, padH, padV);
+            int pad = (int) (12 * density + .5f);
+            int avatarSize = (int) (52 * density + .5f);
+            LinearLayout row = new LinearLayout(parent.getContext());
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(pad, pad, pad, pad);
             row.setBackgroundColor(ThemeColors.background(dark));
             row.setLayoutParams(new RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            return new Holder(row);
+            TextView avatar = new TextView(parent.getContext());
+            avatar.setGravity(Gravity.CENTER);
+            avatar.setTextColor(Color.WHITE);
+            avatar.setTextSize(20);
+            avatar.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+            LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(avatarSize, avatarSize);
+            avatarParams.setMargins(0, 0, pad, 0);
+            row.addView(avatar, avatarParams);
+            TextView text = new TextView(parent.getContext());
+            text.setTextColor(ThemeColors.primaryText(dark));
+            text.setTextSize(16);
+            row.addView(text, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            return new Holder(row, avatar, text);
         }
 
         @Override
         public void onBindViewHolder(Holder holder, int position) {
-            holder.text.setText(labels.get(position));
+            Row row = rows.get(position);
+            holder.text.setText(row.text);
+            holder.avatar.setText(row.letter);
+            GradientDrawable circle = new GradientDrawable();
+            circle.setShape(GradientDrawable.OVAL);
+            circle.setColor(row.color);
+            holder.avatar.setBackground(circle);
             holder.itemView.setOnClickListener(v -> {
                 int current = holder.getBindingAdapterPosition();
                 if (current >= 0) listener.onClick(current);
@@ -469,7 +567,7 @@ public final class MainActivity extends Activity {
 
         @Override
         public int getItemCount() {
-            return labels.size();
+            return rows.size();
         }
     }
 }

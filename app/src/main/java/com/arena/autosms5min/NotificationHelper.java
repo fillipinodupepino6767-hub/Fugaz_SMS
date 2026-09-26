@@ -1,15 +1,18 @@
 package com.arena.autosms5min;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Build;
 
 final class NotificationHelper {
     private static final String CHANNEL_ID = "incoming_sms";
     private static final String DELETION_CHANNEL_ID = "deleted_sms";
+    private static final int TEST_NOTIFICATION_ID = 987654;
 
     private NotificationHelper() { }
 
@@ -39,18 +42,23 @@ final class NotificationHelper {
                 .putExtra(KeepSmsReceiver.EXTRA_SMS_ID, smsId);
         PendingIntent keepIntent = PendingIntent.getBroadcast(context, notificationId(smsId), keep,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        android.app.Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new android.app.Notification.Builder(context, CHANNEL_ID)
-                : new android.app.Notification.Builder(context);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, CHANNEL_ID)
+                : new Notification.Builder(context);
+        String name = ContactNames.displayName(context, address);
         builder.setSmallIcon(android.R.drawable.sym_action_chat)
-                .setContentTitle(address == null ? "SMS recibido" : address)
+                .setContentTitle(name)
                 .setContentText(body)
-                .setStyle(new android.app.Notification.BigTextStyle().bigText(body))
+                .setStyle(new Notification.BigTextStyle().bigText(body))
                 .setContentIntent(contentIntent)
-                .addAction(new android.app.Notification.Action.Builder(
+                .addAction(new Notification.Action.Builder(
                         android.R.drawable.ic_menu_save, "Conservar", keepIntent).build())
                 .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
                 .setWhen(System.currentTimeMillis());
+        if (!name.equals(address)) builder.setSubText(address);
+        Bitmap face = ContactNames.photo(context, address);
+        if (face != null) builder.setLargeIcon(face);
         manager.notify(notificationId(smsId), builder.build());
     }
 
@@ -75,17 +83,45 @@ final class NotificationHelper {
         Intent history = new Intent(context, DeletedHistoryActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(context, deletionNotificationId(smsId), history,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        android.app.Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new android.app.Notification.Builder(context, DELETION_CHANNEL_ID)
-                : new android.app.Notification.Builder(context);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, DELETION_CHANNEL_ID)
+                : new Notification.Builder(context);
         builder.setSmallIcon(android.R.drawable.ic_menu_delete)
                 .setContentTitle(title)
                 .setContentText(message)
-                .setStyle(new android.app.Notification.BigTextStyle().bigText(message))
+                .setStyle(new Notification.BigTextStyle().bigText(message))
                 .setContentIntent(contentIntent)
                 .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
                 .setWhen(System.currentTimeMillis());
         manager.notify(deletionNotificationId(smsId), builder.build());
+    }
+
+    /**
+     * Manual sound check from Settings. If this is heard, the app's channel is
+     * fine and any silence comes from system volume, DND or another app.
+     */
+    static void showTest(Context context) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        createChannels(manager);
+        Intent open = new Intent(context, MainActivity.class);
+        PendingIntent contentIntent = PendingIntent.getActivity(context, TEST_NOTIFICATION_ID, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, CHANNEL_ID)
+                : new Notification.Builder(context);
+        String message = "Si escuchas esto, las notificaciones de Fugaz SMS suenan bien. "
+                + "Si no suena, revisa el volumen, el modo No molestar u otras apps de volumen.";
+        builder.setSmallIcon(android.R.drawable.sym_action_chat)
+                .setContentTitle("Prueba de sonido 🔊")
+                .setContentText(message)
+                .setStyle(new Notification.BigTextStyle().bigText(message))
+                .setContentIntent(contentIntent)
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setWhen(System.currentTimeMillis());
+        manager.notify(TEST_NOTIFICATION_ID, builder.build());
     }
 
     static void cancel(Context context, long smsId) {
