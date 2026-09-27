@@ -246,7 +246,7 @@ public final class ConversationActivity extends Activity {
 
             TextView row = new TextView(this);
             String who = item.type == SmsStore.TYPE_SENT ? "Tú" : name;
-            MessageClassifier.Result classification = MessageClassifier.classify(item.body);
+            MessageClassifier.Result classification = MessageClassifier.classify(this, item.body);
             row.setText(who + "\n[" + classification.display() + "]\n" + item.body + "\n" + format.format(item.date));
             row.setTextSize(16);
             row.setTextColor(ThemeColors.primaryText(dark));

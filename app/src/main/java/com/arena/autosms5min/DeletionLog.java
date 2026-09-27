@@ -34,7 +34,7 @@ final class DeletionLog {
 
     static void add(Context context, String sender, String body, String reason) {
         List<Entry> entries = load(context);
-        MessageClassifier.Result classification = MessageClassifier.classify(body);
+        MessageClassifier.Result classification = MessageClassifier.classify(context, body);
         long now = System.currentTimeMillis();
         entries.add(0, new Entry(sender, preview(body), fullBody(body), now,
                 now + retentionMillis(context), reason, classification.label, classification.keyword));

@@ -34,7 +34,7 @@ public final class IncomingSmsReceiver extends BroadcastReceiver {
         if (messageId > 0) {
             AppState.setLastSmsReceivedAt(context, System.currentTimeMillis());
             MessageClassifier.Result classification =
-                    MessageClassifier.classify(fullBody.toString());
+                    MessageClassifier.classify(context, fullBody.toString());
             long retention = AppState.retentionMillis(context);
             if (retention != AppState.NEVER
                     && MessageMaintenance.wantsAutoDelete(context, classification.label)) {

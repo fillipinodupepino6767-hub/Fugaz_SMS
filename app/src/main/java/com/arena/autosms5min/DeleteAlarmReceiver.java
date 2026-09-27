@@ -28,7 +28,7 @@ public final class DeleteAlarmReceiver extends BroadcastReceiver {
         SmsStore.SmsItem message = SmsStore.messageById(context, id);
         // The user may have switched this type to "keep" after the alarm was set.
         if (message != null && !MessageMaintenance.wantsAutoDelete(context,
-                MessageClassifier.classify(message.body).label)) {
+                MessageClassifier.classify(context, message.body).label)) {
             DeleteRegistry.remove(context, id);
             NotificationHelper.cancel(context, id);
             return;

@@ -3,6 +3,19 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.23.0 (v23)
+
+- **Aplicar tiempo a pendientes:** al cambiar el tiempo de borrado con
+  cuentas en curso, se ofrece reiniciarlas con el nuevo tiempo (o
+  cancelarlas si cambias a Nunca). Antes solo aplicaba a mensajes nuevos y
+  parecía no actualizarse.
+- **Mis palabras clave:** añade tus propias palabras de spam o importantes;
+  las tuyas tienen prioridad sobre las listas internas. Ideal para tiendas
+  que te spamean o avisos que se marcan mal.
+- **Historial con etiquetas vivas:** Eliminados recientemente reclasifica
+  con las reglas actuales (y tus palabras) en vez de mostrar la etiqueta
+  vieja guardada al borrar.
+
 ## Novedades de la versión 0.22.0 (v22)
 
 - **Clasificador en 3 niveles:** los códigos, seguridad, salud y alertas de

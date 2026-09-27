@@ -45,7 +45,7 @@ final class MessageMaintenance {
         long retention = AppState.retentionMillis(context);
         if (retention == AppState.NEVER) return;
         if (DeleteRegistry.dueAt(context, item.id) > 0L) return;
-        if (!wantsAutoDelete(context, MessageClassifier.classify(item.body).label)) return;
+        if (!wantsAutoDelete(context, MessageClassifier.classify(context, item.body).label)) return;
         long dueAt = System.currentTimeMillis() + retention;
         DeleteRegistry.add(context, item.id, dueAt);
         DeleteScheduler.schedule(context, item.id, dueAt);
@@ -70,7 +70,7 @@ final class MessageMaintenance {
             if (item.type != SmsStore.TYPE_INBOX) continue;
             long dueAt = DeleteRegistry.dueAt(context, item.id);
             boolean wants = retention != AppState.NEVER
-                    && wantsAutoDelete(context, MessageClassifier.classify(item.body).label);
+                    && wantsAutoDelete(context, MessageClassifier.classify(context, item.body).label);
             if (wants && dueAt <= 0L) {
                 long due = System.currentTimeMillis() + retention;
                 DeleteRegistry.add(context, item.id, due);
@@ -86,5 +86,52 @@ final class MessageMaintenance {
         // 3. Prune archived IDs whose SMS is gone.
         result.archivedPruned = ArchiveStore.prune(context);
         return result;
+    }
+
+    /** Pending entries whose SMS still exists. */
+    static int countValidPending(Context context) {
+        int count = 0;
+        for (Long id : DeleteRegistry.all(context).keySet()) {
+            if (SmsStore.messageById(context, id) != null) count++;
+        }
+        return count;
+    }
+
+    /**
+     * Restarts every pending countdown with a new retention window, counted from
+     * now. Messages that should no longer auto-delete (type toggles, classifier
+     * changes) are cancelled instead. Stale entries are cleaned. Returns how many
+     * countdowns were restarted.
+     */
+    static int restartAllPending(Context context, long retention) {
+        int restarted = 0;
+        long now = System.currentTimeMillis();
+        for (Long id : DeleteRegistry.all(context).keySet()) {
+            SmsStore.SmsItem item = SmsStore.messageById(context, id);
+            boolean wants = item != null && item.type == SmsStore.TYPE_INBOX
+                    && retention != AppState.NEVER
+                    && wantsAutoDelete(context, MessageClassifier.classify(context, item.body).label);
+            if (wants) {
+                long dueAt = now + retention;
+                DeleteRegistry.add(context, id, dueAt);
+                DeleteScheduler.schedule(context, id, dueAt);
+                restarted++;
+            } else {
+                DeleteScheduler.cancel(context, id);
+                DeleteRegistry.remove(context, id);
+            }
+        }
+        return restarted;
+    }
+
+    /** Cancels every pending countdown; those messages become conserved. Returns how many. */
+    static int cancelAllPending(Context context) {
+        int cancelled = 0;
+        for (Long id : DeleteRegistry.all(context).keySet()) {
+            DeleteScheduler.cancel(context, id);
+            DeleteRegistry.remove(context, id);
+            cancelled++;
+        }
+        return cancelled;
     }
 }

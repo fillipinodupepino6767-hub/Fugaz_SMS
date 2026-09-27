@@ -15,6 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 /** Holds all controls and guidance so the inbox can stay intentionally calm. */
@@ -139,6 +140,10 @@ public final class SettingsActivity extends Activity {
         cleanup.setOnClickListener(v -> showLegacyCleanupConfirmation());
         root.addView(cleanup);
 
+        Button keywords = actionButton("MIS PALABRAS CLAVE");
+        keywords.setOnClickListener(v -> showKeywordManager());
+        root.addView(keywords);
+
         root.addView(sectionTitle("Auto-eliminación por tipo"));
         TextView typeNote = noteText("Elige qué tipos se borran solos con el tiempo elegido. "
                 + "Los importantes se conservan por defecto para proteger códigos y bancos.");
@@ -235,11 +240,11 @@ public final class SettingsActivity extends Activity {
 
         Button classification = actionButton("CLASIFICACIÓN Y PALABRAS CLAVE");
         classification.setOnClickListener(v -> ThemedDialog.message(this,
-                "Clasificación local", MessageClassifier.helpText(), "Entendido"));
+                "Clasificación local", MessageClassifier.helpText(this), "Entendido"));
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.22.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.23.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -468,11 +473,38 @@ public final class SettingsActivity extends Activity {
         for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
         ThemedDialog.singleChoice(this, "Tiempo para borrar SMS nuevos",
                 "Se aplica a los SMS que lleguen de ahora en adelante, según su tipo. "
-                        + "Los que ya tienen cuenta atrás conservan su hora original.",
+                        + "Si hay cuentas atrás en curso, después podrás reiniciarlas con el nuevo tiempo o dejarlas como están.",
                 labels, checked, which -> {
-                    AppState.setRetentionMillis(this, values[which]);
+                    long selected = values[which];
+                    AppState.setRetentionMillis(this, selected);
                     refreshUi();
+                    askApplyRetentionToPending(selected);
                 });
+    }
+
+    /** Offers to restart in-flight countdowns with the newly chosen retention. */
+    private void askApplyRetentionToPending(long retention) {
+        int pending = MessageMaintenance.countValidPending(this);
+        if (pending <= 0) return;
+        if (retention == AppState.NEVER) {
+            ThemedDialog.confirm(this, "Cancelar cuentas en curso",
+                    "Cambiaste a «Nunca automáticamente» y hay " + pending
+                            + " mensaje(s) con cuenta atrás en curso. ¿Cancelo esas cuentas? (esos mensajes se conservarán)",
+                    "Mantenerlas", "Cancelarlas", () -> {
+                        int cancelled = MessageMaintenance.cancelAllPending(this);
+                        Toast.makeText(this, cancelled + " cuenta(s) cancelada(s).",
+                                Toast.LENGTH_SHORT).show();
+                    });
+        } else {
+            ThemedDialog.confirm(this, "Aplicar a los pendientes",
+                    "Hay " + pending + " mensaje(s) con cuenta atrás en curso (conservan su hora original). ¿Los reinicias con el nuevo tiempo ("
+                            + AppState.retentionLabel(this) + ") desde ahora?",
+                    "Solo nuevos", "Reiniciar todo", () -> {
+                        int restarted = MessageMaintenance.restartAllPending(this, retention);
+                        Toast.makeText(this, restarted + " cuenta(s) reiniciada(s).",
+                                Toast.LENGTH_SHORT).show();
+                    });
+        }
     }
 
     private void showBlockedSenders() {
@@ -500,6 +532,55 @@ public final class SettingsActivity extends Activity {
                     Toast.makeText(this, ContactNames.displayName(this, sender) + " desbloqueado.",
                             Toast.LENGTH_SHORT).show();
                     refreshUi();
+                });
+    }
+
+    private void showKeywordManager() {
+        final List<String> important = KeywordStore.importantWords(this);
+        final List<String> spam = KeywordStore.spamWords(this);
+        List<String> rows = new ArrayList<>();
+        rows.add("➕ Añadir palabra de spam");
+        rows.add("➕ Añadir palabra importante");
+        for (String word : important) rows.add("⭐ " + word + "  (importante · toca para quitar)");
+        for (String word : spam) rows.add("🚫 " + word + "  (spam · toca para quitar)");
+        ThemedDialog.items(this, "Mis palabras clave",
+                "Tus palabras tienen prioridad sobre las listas internas. Úsalas para corregir casos como promos que se cuelan o avisos que se marcan mal.",
+                rows.toArray(new String[0]), "Cerrar", which -> {
+                    if (which == 0) showAddKeyword(true);
+                    else if (which == 1) showAddKeyword(false);
+                    else {
+                        int index = which - 2;
+                        if (index < important.size()) confirmRemoveKeyword(false, important.get(index));
+                        else confirmRemoveKeyword(true, spam.get(index - important.size()));
+                    }
+                });
+    }
+
+    private void showAddKeyword(final boolean spam) {
+        ThemedDialog.input(this, spam ? "Añadir palabra de spam" : "Añadir palabra importante",
+                "Ejemplos: el nombre de una tienda que te spamea, o una palabra de tus avisos. Se compara sin mayúsculas ni tildes.",
+                "", android.text.InputType.TYPE_CLASS_TEXT,
+                null, "Cancelar", "Añadir", null, value -> {
+                    String word = value == null ? "" : value.trim();
+                    if (word.isEmpty()) {
+                        Toast.makeText(this, "Escribe una palabra.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (spam) KeywordStore.addSpam(this, word);
+                    else KeywordStore.addImportant(this, word);
+                    Toast.makeText(this, "«" + word + "» añadida.", Toast.LENGTH_SHORT).show();
+                    showKeywordManager();
+                });
+    }
+
+    private void confirmRemoveKeyword(final boolean spam, final String word) {
+        ThemedDialog.confirm(this, "Quitar «" + word + "»",
+                "Se quitará de tu lista " + (spam ? "de spam." : "de importantes.")
+                        + " Volverán a mandar las listas internas para esa palabra.",
+                "Cancelar", "Quitar", () -> {
+                    if (spam) KeywordStore.removeSpam(this, word);
+                    else KeywordStore.removeImportant(this, word);
+                    showKeywordManager();
                 });
     }
 
@@ -540,6 +621,8 @@ public final class SettingsActivity extends Activity {
                         + "• Usa el buscador de la bandeja para filtrar por nombre, número o texto, y el de cada conversación para encontrar un mensaje.\n\n"
                         + "• Si no escuchas avisos, usa Probar sonido de notificación: si la prueba suena, el problema es del volumen o de otra app, no de Fugaz SMS.\n\n"
                         + "• El clasificador detecta promos (cupones, adelantos de saldo, descuentos, enlaces) como posible spam aunque mencionen saldo o bancos; los códigos y alertas de fraude siguen siendo importantes.\n\n"
+                        + "• Si cambias el tiempo de borrado con cuentas en curso, podrás reiniciarlas con el nuevo tiempo o dejarlas como están.\n\n"
+                        + "• En Mis palabras clave puedes añadir tus propias palabras de spam o importantes; las tuyas mandan sobre las listas internas.\n\n"
                         + "• Al bloquear un número puedes borrar también sus mensajes existentes de una vez; si una conversación queda vacía, se cierra sola.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"

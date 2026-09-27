@@ -1,13 +1,15 @@
 package com.arena.autosms5min;
 
+import android.content.Context;
+
 import java.text.Normalizer;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * Lightweight, on-device labels. Labels are advisory and never auto-block a sender.
- * Matching runs in three tiers: security/medical/fraud codes always win, then spam
- * and promo signals, and only then contextual words like "saldo" or "banco". This way
- * a promo mentioning "saldo" is labeled spam, but a verification code never is.
+ * User words (KeywordStore) win first, then security/medical/fraud codes, then spam
+ * and promo signals, and only then contextual words like "saldo" or "banco".
  */
 final class MessageClassifier {
     static final String LABEL_IMPORTANT = "Importante";
@@ -52,8 +54,18 @@ final class MessageClassifier {
 
     private MessageClassifier() { }
 
-    static Result classify(String body) {
+    static Result classify(Context context, String body) {
         String text = normalize(body);
+        for (String word : KeywordStore.importantWords(context)) {
+            if (matches(text, normalize(word))) {
+                return new Result(LABEL_IMPORTANT, word);
+            }
+        }
+        for (String word : KeywordStore.spamWords(context)) {
+            if (matches(text, normalize(word))) {
+                return new Result(LABEL_SPAM, word);
+            }
+        }
         for (int i = 0; i < STRONG_IMPORTANT.length; i++) {
             if (matches(text, STRONG_IMPORTANT[i])) {
                 return new Result(LABEL_IMPORTANT, STRONG_IMPORTANT_DISPLAY[i]);
@@ -72,16 +84,25 @@ final class MessageClassifier {
         return new Result(LABEL_NORMAL, "");
     }
 
-    static String helpText() {
-        return "La etiqueta se calcula solo en el teléfono y es orientativa: no bloquea ni elimina automáticamente.\n\n"
+    static String helpText(Context context) {
+        String base = "La etiqueta se calcula solo en el teléfono y es orientativa: no bloquea ni elimina automáticamente.\n\n"
                 + "Siempre importante (códigos, seguridad, salud, fraude): " + join(STRONG_IMPORTANT_DISPLAY) + ".\n\n"
                 + "Posible spam (promos, premios, enlaces): " + join(SPAM_DISPLAY) + ".\n\n"
                 + "Importante solo si no parece promo (bancos, facturas, saldo): " + join(SOFT_IMPORTANT_DISPLAY) + ".\n\n"
-                + "El orden importa: primero se buscan códigos y alertas, luego señales de spam y al final el resto. "
+                + "El orden importa: primero tus palabras, luego códigos y alertas, después señales de spam y al final el resto. "
                 + "Así una promo que mencione «saldo» se marca como posible spam, pero un código de verificación nunca.\n\n"
                 + "En Configuración → Auto-eliminación por tipo puedes decidir si cada tipo se borra solo o se conserva. "
                 + "Por defecto los importantes se conservan para proteger códigos y avisos del banco. "
                 + "Un mensaje legítimo puede parecer spam y viceversa; revisa siempre el remitente y el contenido.";
+        List<String> mineImportant = KeywordStore.importantWords(context);
+        List<String> mineSpam = KeywordStore.spamWords(context);
+        if (mineImportant.isEmpty() && mineSpam.isEmpty()) {
+            return base + "\n\nNo tienes palabras propias todavía: añádelas en Configuración → Mis palabras clave.";
+        }
+        StringBuilder extra = new StringBuilder("\n\nTus palabras (tienen prioridad): ");
+        if (!mineImportant.isEmpty()) extra.append("importantes: ").append(join(mineImportant)).append(". ");
+        if (!mineSpam.isEmpty()) extra.append("spam: ").append(join(mineSpam)).append(".");
+        return base + extra.toString();
     }
 
     /**
@@ -110,6 +131,15 @@ final class MessageClassifier {
         for (int i = 0; i < items.length; i++) {
             if (i > 0) out.append(", ");
             out.append(items[i]);
+        }
+        return out.toString();
+    }
+
+    private static String join(List<String> items) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < items.size(); i++) {
+            if (i > 0) out.append(", ");
+            out.append(items.get(i));
         }
         return out.toString();
     }

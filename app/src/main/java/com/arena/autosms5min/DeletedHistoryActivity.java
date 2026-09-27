@@ -148,8 +148,7 @@ public final class DeletedHistoryActivity extends Activity {
         List<String> rows = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         for (DeletionLog.Entry entry : entries) {
-            String tag = entry.keyword.isEmpty() ? entry.label : entry.label + " · \u201C" + entry.keyword + "\u201D";
-            rows.add(ContactNames.twoLineLabel(this, entry.sender) + "\n[" + tag + "] · " + entry.reason + "\n"
+            rows.add(ContactNames.twoLineLabel(this, entry.sender) + "\n[" + liveTag(entry) + "] · " + entry.reason + "\n"
                     + entry.preview + "\nEliminado: " + format.format(entry.time)
                     + "\nSe borra del historial: " + format.format(entry.expiresAt)
                     + "  (quedan " + CountdownFormatter.formatHistoryRemaining(entry.expiresAt) + ")");
@@ -162,6 +161,19 @@ public final class DeletedHistoryActivity extends Activity {
         empty.setText("No hay eliminaciones recientes.\nLas vistas previas se borran definitivamente después de "
                 + DeletionLog.retentionLabel(this) + ".");
         empty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * Reclassifies with the current rules (and user words) instead of the label
+     * stored at deletion time, so old entries always show the current verdict.
+     */
+    private String liveTag(DeletionLog.Entry entry) {
+        if (DeletionLog.isSummary(entry)) {
+            return entry.keyword.isEmpty() ? entry.label
+                    : entry.label + " · \u201C" + entry.keyword + "\u201D";
+        }
+        return MessageClassifier.classify(this,
+                entry.hasFull() ? entry.full : entry.preview).display();
     }
 
     private void showEntryOptions(int position) {
@@ -178,8 +190,7 @@ public final class DeletedHistoryActivity extends Activity {
                     });
             return;
         }
-        String tag = entry.keyword.isEmpty() ? entry.label
-                : entry.label + " · \u201C" + entry.keyword + "\u201D";
+        String tag = liveTag(entry);
         if (entry.hasFull()) {
             ThemedDialog.items(this, ContactNames.displayName(this, entry.sender),
                     "[" + tag + "] · " + entry.reason + "\n" + entry.preview

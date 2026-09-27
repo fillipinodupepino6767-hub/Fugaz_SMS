@@ -67,7 +67,7 @@ final class NotificationHelper {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
         createChannels(manager);
-        MessageClassifier.Result classification = MessageClassifier.classify(body);
+        MessageClassifier.Result classification = MessageClassifier.classify(context, body);
         String title;
         String message;
         if (MessageClassifier.LABEL_IMPORTANT.equals(classification.label)) {

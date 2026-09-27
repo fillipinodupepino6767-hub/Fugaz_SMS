@@ -416,7 +416,7 @@ public final class MainActivity extends Activity {
             shownItems.add(item);
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
             String name = ContactNames.displayName(this, item.address);
-            MessageClassifier.Result classification = MessageClassifier.classify(item.body);
+            MessageClassifier.Result classification = MessageClassifier.classify(this, item.body);
             String countdown = "";
             if (item.type == SmsStore.TYPE_INBOX) {
                 long dueAt = DeleteRegistry.dueAt(this, item.id);

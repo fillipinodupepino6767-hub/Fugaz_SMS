@@ -109,7 +109,7 @@ public final class ArchivedActivity extends Activity {
             if (!ArchiveStore.isArchived(this, item.id)) continue;
             shownItems.add(item);
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
-            MessageClassifier.Result classification = MessageClassifier.classify(item.body);
+            MessageClassifier.Result classification = MessageClassifier.classify(this, item.body);
             labels.add(direction + ContactNames.twoLineLabel(this, item.address) + "\n[" + classification.display() + "]\n"
                     + item.body + "\n" + format.format(item.date));
         }
