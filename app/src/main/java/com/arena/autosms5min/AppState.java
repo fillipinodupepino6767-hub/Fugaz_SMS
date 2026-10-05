@@ -19,6 +19,8 @@ final class AppState {
     private static final String KEY_SWIPE_RIGHT = "swipe_right";
     private static final String KEY_SWIPE_LEFT = "swipe_left";
     private static final String KEY_LAST_SMS_AT = "last_sms_received_at";
+    private static final String KEY_WATCH_RINGER = "watch_ringer";
+    private static final String KEY_WATCH_MINUTES = "watch_default_minutes";
     /** Appearance modes. */
     static final int THEME_LIGHT = 0;
     static final int THEME_DARK = 1;
@@ -189,6 +191,37 @@ final class AppState {
         if (cleaned.isEmpty()) editor.remove(KEY_SIM_NUMBER_PREFIX + subscriptionId);
         else editor.putString(KEY_SIM_NUMBER_PREFIX + subscriptionId, cleaned);
         editor.apply();
+    }
+
+    /** Ringer watch: prompt when another app or the system silences the phone. */
+    static boolean watchRinger(Context context) {
+        return prefs(context).getBoolean(KEY_WATCH_RINGER, false);
+    }
+
+    static void setWatchRinger(Context context, boolean enabled) {
+        prefs(context).edit().putBoolean(KEY_WATCH_RINGER, enabled).apply();
+    }
+
+    /** Default minutes armed by the one-tap action in the watch prompt. */
+    static long watchDefaultMinutes(Context context) {
+        long minutes = prefs(context).getLong(KEY_WATCH_MINUTES, 120L);
+        if (minutes < RingerTimer.MIN_MINUTES) return RingerTimer.MIN_MINUTES;
+        if (minutes > RingerTimer.MAX_MINUTES) return RingerTimer.MAX_MINUTES;
+        return minutes;
+    }
+
+    static void setWatchDefaultMinutes(Context context, long minutes) {
+        prefs(context).edit().putLong(KEY_WATCH_MINUTES, minutes).apply();
+    }
+
+    static String watchMinutesLabel(Context context) {
+        return watchMinutesLabel(watchDefaultMinutes(context));
+    }
+
+    static String watchMinutesLabel(long minutes) {
+        if (minutes == 60L) return "1 h";
+        if (minutes % 60L == 0L) return (minutes / 60L) + " h";
+        return minutes + " min";
     }
 
     private static SharedPreferences prefs(Context context) {

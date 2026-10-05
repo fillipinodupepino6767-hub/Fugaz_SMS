@@ -9,10 +9,18 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Build;
 
+import java.text.DateFormat;
+
 final class NotificationHelper {
     private static final String CHANNEL_ID = "incoming_sms";
     private static final String DELETION_CHANNEL_ID = "deleted_sms";
+    private static final String WATCH_CHANNEL_ID = "ringer_watch";
     private static final int TEST_NOTIFICATION_ID = 987654;
+    private static final int WATCH_PROMPT_ID = 610027;
+    private static final int WATCH_ARMED_ID = 610028;
+    private static final int WATCH_SERVICE_ID = 610026;
+    private static final int WATCH_ARM_CODE = 610031;
+    private static final int WATCH_OPEN_CODE = 610032;
 
     private NotificationHelper() { }
 
@@ -147,6 +155,94 @@ final class NotificationHelper {
         manager.notify(610025, builder.build());
     }
 
+    /**
+     * Prompt posted when another app or the system silences the phone.
+     * One tap arms the timer with the pre-configured default time.
+     */
+    static void showRingerWatchPrompt(Context context, boolean vibrate) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        createChannels(manager);
+        String label = AppState.watchMinutesLabel(context);
+        String title = vibrate ? "Se detectó vibración 📳" : "Se detectó silencio 🔇";
+        String message = (vibrate ? "El teléfono pasó a vibración" : "El teléfono pasó a silencio")
+                + " (otra app o el sistema). ¿Activo el temporizador de " + label
+                + " para que el sonido vuelva solo?";
+        Intent open = new Intent(context, SilenceTimerActivity.class);
+        PendingIntent openIntent = PendingIntent.getActivity(context, WATCH_OPEN_CODE, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent arm = new Intent(context, RingerWatchActionReceiver.class)
+                .setAction(RingerWatchActionReceiver.ACTION_ARM_DEFAULT);
+        PendingIntent armIntent = PendingIntent.getBroadcast(context, WATCH_ARM_CODE, arm,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, CHANNEL_ID)
+                : new Notification.Builder(context);
+        builder.setSmallIcon(android.R.drawable.sym_action_chat)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setStyle(new Notification.BigTextStyle().bigText(message))
+                .setContentIntent(openIntent)
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_menu_save,
+                        "ACTIVAR (" + label.toUpperCase() + ")", armIntent).build())
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_menu_edit, "ELEGIR TIEMPO", openIntent).build())
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setWhen(System.currentTimeMillis());
+        manager.notify(WATCH_PROMPT_ID, builder.build());
+    }
+
+    static void cancelWatchPrompt(Context context) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) manager.cancel(WATCH_PROMPT_ID);
+    }
+
+    /** Confirmation posted when the timer is armed from the watch prompt. */
+    static void showWatchArmed(Context context, long restoreAt) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        createChannels(manager);
+        String when = DateFormat.getTimeInstance(DateFormat.SHORT).format(restoreAt);
+        String message = "El sonido volverá solo a las " + when + ". Toca para ver o cancelar el temporizador.";
+        Intent open = new Intent(context, SilenceTimerActivity.class);
+        PendingIntent openIntent = PendingIntent.getActivity(context, WATCH_OPEN_CODE, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, CHANNEL_ID)
+                : new Notification.Builder(context);
+        builder.setSmallIcon(android.R.drawable.sym_action_chat)
+                .setContentTitle("Temporizador activado ⏳")
+                .setContentText(message)
+                .setStyle(new Notification.BigTextStyle().bigText(message))
+                .setContentIntent(openIntent)
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setWhen(System.currentTimeMillis());
+        manager.notify(WATCH_ARMED_ID, builder.build());
+    }
+
+    /** Quiet persistent notification required while the ringer watch service runs. */
+    static Notification watchServiceNotification(Context context) {
+        NotificationManager manager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) createChannels(manager);
+        Intent open = new Intent(context, SilenceTimerActivity.class);
+        PendingIntent openIntent = PendingIntent.getActivity(context, WATCH_SERVICE_ID, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, WATCH_CHANNEL_ID)
+                : new Notification.Builder(context);
+        builder.setSmallIcon(android.R.drawable.sym_action_chat)
+                .setContentTitle("Vigilando modo de sonido")
+                .setContentText("Toca para abrir el temporizador de silencio.")
+                .setContentIntent(openIntent)
+                .setOngoing(true)
+                .setWhen(System.currentTimeMillis());
+        return builder.build();
+    }
+
     static void cancel(Context context, long smsId) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager != null) manager.cancel(notificationId(smsId));
@@ -162,6 +258,10 @@ final class NotificationHelper {
                     "SMS eliminados", NotificationManager.IMPORTANCE_DEFAULT);
             deleted.setDescription("Avisos después de eliminar un SMS temporal automáticamente");
             manager.createNotificationChannel(deleted);
+            NotificationChannel watch = new NotificationChannel(WATCH_CHANNEL_ID,
+                    "Vigilancia de sonido", NotificationManager.IMPORTANCE_LOW);
+            watch.setDescription("Aviso permanente mientras se vigila el modo de sonido");
+            manager.createNotificationChannel(watch);
         }
     }
 

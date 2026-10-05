@@ -39,6 +39,8 @@ public final class SettingsActivity extends Activity {
     private Button contactsButton;
     private Button deletedHistoryButton;
     private Button themeButton;
+    private Button watchButton;
+    private Button watchTimeButton;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -241,6 +243,21 @@ public final class SettingsActivity extends Activity {
         });
         root.addView(silenceTimer);
 
+        root.addView(noteText("Vigilancia: si otra app (como Volume Styles) o el sistema pone el teléfono en silencio o vibración, te llega una notificación para activar el temporizador de un toque, con tu tiempo automático. Mientras vigila verás un aviso permanente discreto. Nota honesta: si otra app solo activa No molestar sin cambiar el modo, Android no avisa a otras apps y no se puede detectar."));
+        watchButton = actionButton("");
+        watchButton.setOnClickListener(v -> {
+            boolean enabled = !AppState.watchRinger(this);
+            AppState.setWatchRinger(this, enabled);
+            RingerWatchService.setEnabled(this, enabled);
+            Toast.makeText(this, enabled ? "Vigilancia activada." : "Vigilancia desactivada.",
+                    Toast.LENGTH_SHORT).show();
+            refreshUi();
+        });
+        root.addView(watchButton);
+        watchTimeButton = actionButton("");
+        watchTimeButton.setOnClickListener(v -> showWatchTimePicker());
+        root.addView(watchTimeButton);
+
         root.addView(sectionTitle("Saldo"));
         root.addView(noteText("Consulta el saldo de cada línea con los canales oficiales: Kolbi (*888# o SMS al 8888), Liberty/Movistar (SMS al 606), Claro (*611#) y el menú de la SIM de tu operador."));
         Button balance = actionButton("SALDO DE MIS LÍNEAS");
@@ -269,7 +286,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.25.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.26.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -343,6 +360,10 @@ public final class SettingsActivity extends Activity {
         contactsButton.setText("CONTACTOS (VER NOMBRES Y FOTOS): "
                 + (SetupHelper.hasContactsPermission(this) ? "ACTIVADOS" : "SIN PERMISO (TOCA PARA PEDIRLO)"));
         themeButton.setText("APARIENCIA: " + AppState.themeLabel(this).toUpperCase());
+        watchButton.setText("VIGILAR SILENCIO DE OTRAS APPS: "
+                + (AppState.watchRinger(this) ? "SÍ" : "NO"));
+        watchTimeButton.setText("TIEMPO AUTOMÁTICO: "
+                + AppState.watchMinutesLabel(this).toUpperCase());
     }
 
     private void runRefresh() {
@@ -351,6 +372,20 @@ public final class SettingsActivity extends Activity {
         ThemedDialog.message(this, "Estado actualizado", result.summary()
                 + "\n\nLos mensajes enviados siempre se conservan; elimínalos manualmente si lo deseas.",
                 "Entendido");
+    }
+
+    private void showWatchTimePicker() {
+        final long[] values = {15L, 30L, 60L, 120L, 240L, 480L};
+        final String[] labels = {"15 minutos", "30 minutos", "1 hora", "2 horas", "4 horas", "8 horas"};
+        long current = AppState.watchDefaultMinutes(this);
+        int checked = 3;
+        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
+        ThemedDialog.singleChoice(this, "Tiempo automático",
+                "Al tocar Activar en el aviso de silencio, el sonido volverá solo después de este tiempo.",
+                labels, checked, which -> {
+                    AppState.setWatchDefaultMinutes(this, values[which]);
+                    refreshUi();
+                });
     }
 
     private void showThemePicker() {
@@ -650,6 +685,7 @@ public final class SettingsActivity extends Activity {
                         + "• En Mis palabras clave puedes añadir tus propias palabras de spam o importantes; las tuyas mandan sobre las listas internas.\n\n"
                         + "• Al bloquear un número puedes borrar también sus mensajes existentes de una vez; si una conversación queda vacía, se cierra sola.\n\n"
                         + "• El temporizador de silencio vibra o silencia el teléfono ahora y restaura el sonido solo después de los minutos que escribas. Si usas No molestar, dale el permiso extra que pide la pantalla.\n\n"
+                        + "• Si activas Vigilar silencio de otras apps, cuando Volume Styles o el sistema ponga el teléfono en silencio o vibración te llega una notificación: de un toque activas el temporizador con tu tiempo automático, sin abrir la app. No detecta No molestar puro.\n\n"
                         + "• En Saldo de mis líneas consultas el saldo por línea: Kolbi marca *888# desde el marcador o pide el saldo por SMS al 8888, Liberty/Movistar lo pide por SMS al 606, y siempre puedes abrir el menú de la SIM de tu operador.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"

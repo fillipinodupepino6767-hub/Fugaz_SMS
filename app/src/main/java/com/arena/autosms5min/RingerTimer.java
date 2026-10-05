@@ -17,6 +17,8 @@ import android.os.Build;
 final class RingerTimer {
     private static final String PREFS = "ringer_timer";
     private static final String KEY_RESTORE_AT = "restore_at";
+    private static final String KEY_SELF_AT = "self_change_at";
+    private static final String KEY_LAST_MODE = "last_seen_mode";
     private static final int REQUEST_CODE = 61024;
     static final long MIN_MINUTES = 1L;
     static final long MAX_MINUTES = 720L; // 12 hours
@@ -37,6 +39,7 @@ final class RingerTimer {
             }
         }
         prefs(context).edit().putLong(KEY_RESTORE_AT, restoreAt).apply();
+        noteSelfChange(context);
         schedule(context, restoreAt);
         return restoreAt;
     }
@@ -85,6 +88,27 @@ final class RingerTimer {
             case AudioManager.RINGER_MODE_VIBRATE: return "Vibración 📳";
             default: return "Silencio 🔇";
         }
+    }
+
+    /**
+     * Marks our own arm/restore mode changes so the ringer watch does not
+     * prompt for changes this app made itself.
+     */
+    static void noteSelfChange(Context context) {
+        prefs(context).edit().putLong(KEY_SELF_AT, System.currentTimeMillis()).apply();
+    }
+
+    static long selfChangeAt(Context context) {
+        return prefs(context).getLong(KEY_SELF_AT, 0L);
+    }
+
+    /** Last ringer mode seen by the watch; -1 means unknown. */
+    static int lastSeenMode(Context context) {
+        return prefs(context).getInt(KEY_LAST_MODE, -1);
+    }
+
+    static void setLastSeenMode(Context context, int mode) {
+        prefs(context).edit().putInt(KEY_LAST_MODE, mode).apply();
     }
 
     private static void schedule(Context context, long restoreAt) {

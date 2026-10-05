@@ -3,6 +3,14 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.26.0 (v26)
+
+- **Vigilar silencio de otras apps:** si Volume Styles, el sistema u otra
+  app pone el teléfono en silencio o vibración, llega una notificación
+  con Activar (tu tiempo automático) de un toque, sin abrir la app.
+  Nada se arma solo: tú decides. Opcional, con aviso permanente
+  discreto; no detecta No molestar puro (Android no lo avisa).
+
 ## Novedades de la versión 0.25.0 (v25)
 
 - **Arreglo urgente:** el Temporizador de silencio se cerraba al abrirlo

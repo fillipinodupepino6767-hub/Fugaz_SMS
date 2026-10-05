@@ -17,6 +17,8 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Silence timer: also lift Do Not Disturb on restore (user grants in system settings). -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Ringer watch: foreground service that detects external silence changes (normal permission). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- Android 12+: exact per-SMS delete alarms. If denied, the scheduler falls back to inexact alarms. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
@@ -117,6 +119,8 @@
         <receiver android:name=".SentSmsReceiver" android:exported="false" />
         <receiver android:name=".KeepSmsReceiver" android:exported="false" />
         <receiver android:name=".RingerRestoreReceiver" android:exported="false" />
+        <receiver android:name=".RingerWatchActionReceiver" android:exported="false" />
+        <service android:name=".RingerWatchService" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
