@@ -24,6 +24,9 @@
          cannot see Google Messages and wrongly reports it as not installed. -->
     <queries>
         <package android:name="com.google.android.apps.messaging" />
+        <!-- Balance screen: open the carrier SIM Toolkit menu (operator services). -->
+        <package android:name="com.android.stk" />
+        <package android:name="com.android.stk2" />
     </queries>
 
     <application
@@ -42,6 +45,12 @@
             android:exported="false" />
         <activity
             android:name=".SimSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SilenceTimerActivity"
+            android:exported="false" />
+        <activity
+            android:name=".BalanceActivity"
             android:exported="false" />
         <activity
             android:name=".DeletedHistoryActivity"

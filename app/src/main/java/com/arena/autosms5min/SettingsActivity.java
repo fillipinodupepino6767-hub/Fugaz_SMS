@@ -232,8 +232,26 @@ public final class SettingsActivity extends Activity {
         root.addView(noteText("¿Pones vibrar en el colegio y se te olvida quitarlo? Programa el "
                 + "temporizador: silencia ahora y el sonido vuelve solo después del tiempo que elijas."));
         Button silenceTimer = actionButton("TEMPORIZADOR DE SILENCIO");
-        silenceTimer.setOnClickListener(v -> startActivity(new Intent(this, SilenceTimerActivity.class)));
+        silenceTimer.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(this, SilenceTimerActivity.class));
+            } catch (Exception failed) {
+                Toast.makeText(this, "No se pudo abrir el temporizador.", Toast.LENGTH_LONG).show();
+            }
+        });
         root.addView(silenceTimer);
+
+        root.addView(sectionTitle("Saldo"));
+        root.addView(noteText("Consulta el saldo de cada línea con los canales oficiales: Kolbi (*888# o SMS al 8888), Liberty/Movistar (SMS al 606), Claro (*611#) y el menú de la SIM de tu operador."));
+        Button balance = actionButton("SALDO DE MIS LÍNEAS");
+        balance.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(this, BalanceActivity.class));
+            } catch (Exception failed) {
+                Toast.makeText(this, "No se pudo abrir el saldo.", Toast.LENGTH_LONG).show();
+            }
+        });
+        root.addView(balance);
 
         root.addView(sectionTitle("Apariencia"));
         themeButton = actionButton("");
@@ -251,7 +269,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.24.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.25.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -632,6 +650,7 @@ public final class SettingsActivity extends Activity {
                         + "• En Mis palabras clave puedes añadir tus propias palabras de spam o importantes; las tuyas mandan sobre las listas internas.\n\n"
                         + "• Al bloquear un número puedes borrar también sus mensajes existentes de una vez; si una conversación queda vacía, se cierra sola.\n\n"
                         + "• El temporizador de silencio vibra o silencia el teléfono ahora y restaura el sonido solo después de los minutos que escribas. Si usas No molestar, dale el permiso extra que pide la pantalla.\n\n"
+                        + "• En Saldo de mis líneas consultas el saldo por línea: Kolbi marca *888# desde el marcador o pide el saldo por SMS al 8888, Liberty/Movistar lo pide por SMS al 606, y siempre puedes abrir el menú de la SIM de tu operador.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"
                         + "• Toca un registro en Eliminados recientemente para recuperarlo a la bandeja o archivarlo antes de que venza.\n\n"

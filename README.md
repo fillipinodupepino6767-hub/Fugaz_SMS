@@ -3,6 +3,17 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.25.0 (v25)
+
+- **Arreglo urgente:** el Temporizador de silencio se cerraba al abrirlo
+  porque faltaba registrar la pantalla en el manifiesto. Ya abre normal
+  (no era un permiso).
+- **Saldo de mis líneas:** consulta el saldo por SIM con los canales
+  oficiales (Kolbi: *888# o SMS SALDO al 8888; Liberty/Movistar: SMS
+  SALDO al 606; Claro: *611#). El SMS se envía desde la SIM que elijas
+  y la respuesta llega como SMS normal; también abre el menú de la SIM
+  del operador. Android no permite a las apps leer el saldo directo.
+
 ## Novedades de la versión 0.24.0 (v24)
 
 - **Temporizador de silencio:** Configuración → Sonido. Silencia o vibra el

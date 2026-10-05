@@ -87,6 +87,16 @@ public final class SimSettingsActivity extends Activity {
         });
         root.addView(automatic);
 
+        Button balance = actionButton("CONSULTAR SALDO DE MIS LÍNEAS");
+        balance.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(this, BalanceActivity.class));
+            } catch (Exception failed) {
+                Toast.makeText(this, "No se pudo abrir el saldo.", Toast.LENGTH_LONG).show();
+            }
+        });
+        root.addView(balance);
+
         cards = new LinearLayout(this);
         cards.setOrientation(LinearLayout.VERTICAL);
         root.addView(cards);
