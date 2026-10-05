@@ -13,6 +13,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Optional: show contact names and photos instead of raw numbers. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Silence timer: restore the ringer sound (normal permission). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Silence timer: also lift Do Not Disturb on restore (user grants in system settings). -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Android 12+: exact per-SMS delete alarms. If denied, the scheduler falls back to inexact alarms. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
@@ -103,6 +107,7 @@
         <receiver android:name=".HistoryExpiryReceiver" android:exported="false" />
         <receiver android:name=".SentSmsReceiver" android:exported="false" />
         <receiver android:name=".KeepSmsReceiver" android:exported="false" />
+        <receiver android:name=".RingerRestoreReceiver" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

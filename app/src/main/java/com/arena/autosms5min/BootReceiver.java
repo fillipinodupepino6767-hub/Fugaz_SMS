@@ -17,5 +17,6 @@ public final class BootReceiver extends BroadcastReceiver {
         }
         DeletionLog.pruneExpired(context);
         HistoryExpiryScheduler.scheduleNext(context);
+        RingerTimer.rescheduleAfterBoot(context);
     }
 }

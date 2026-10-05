@@ -62,6 +62,18 @@ final class SetupHelper {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
+    /** Lets the silence timer also lift Do Not Disturb when restoring the sound. */
+    static boolean hasDndAccess(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
+        NotificationManager manager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        try {
+            return manager != null && manager.isNotificationPolicyAccessGranted();
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     static boolean notificationsEnabled(Context context) {
         NotificationManager manager =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -159,6 +171,16 @@ final class SetupHelper {
             }
         } catch (Exception ignored) {
             // Some builds hide this screen; the scheduler falls back to inexact alarms.
+        }
+    }
+
+    static void openDndSettings(Activity activity) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                activity.startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+            }
+        } catch (Exception ignored) {
+            openAppDetails(activity);
         }
     }
 

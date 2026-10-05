@@ -124,6 +124,29 @@ final class NotificationHelper {
         manager.notify(TEST_NOTIFICATION_ID, builder.build());
     }
 
+    /** Confirmation posted when the silence timer restores the ringer. */
+    static void showRingerRestored(Context context) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        createChannels(manager);
+        Intent open = new Intent(context, MainActivity.class);
+        PendingIntent contentIntent = PendingIntent.getActivity(context, 610025, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        String message = "El temporizador de silencio terminó: el sonido del teléfono está activado de nuevo.";
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, CHANNEL_ID)
+                : new Notification.Builder(context);
+        builder.setSmallIcon(android.R.drawable.sym_action_chat)
+                .setContentTitle("Sonido restaurado 🔊")
+                .setContentText(message)
+                .setStyle(new Notification.BigTextStyle().bigText(message))
+                .setContentIntent(contentIntent)
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setWhen(System.currentTimeMillis());
+        manager.notify(610025, builder.build());
+    }
+
     static void cancel(Context context, long smsId) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager != null) manager.cancel(notificationId(smsId));

@@ -3,6 +3,15 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.24.0 (v24)
+
+- **Temporizador de silencio:** Configuración → Sonido. Silencia o vibra el
+  teléfono AHORA y el sonido vuelve solo después de los minutos que escribas
+  (accesos: 30 min, 1 h, 2 h, 4 h o manual 1–720). Si usas No molestar,
+  dale el permiso extra una sola vez. Sobrevive reinicios.
+- **Cuenta atrás con segundos:** Eliminados recientemente ya no parece
+  atascado en horas; ahora muestra segundos siempre (7 h 23 min 45 s).
+
 ## Novedades de la versión 0.23.0 (v23)
 
 - **Aplicar tiempo a pendientes:** al cambiar el tiempo de borrado con

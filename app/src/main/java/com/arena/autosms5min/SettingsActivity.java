@@ -228,6 +228,13 @@ public final class SettingsActivity extends Activity {
         openGm.setOnClickListener(v -> showGoogleMessagesGuide());
         root.addView(openGm);
 
+        root.addView(sectionTitle("Sonido"));
+        root.addView(noteText("¿Pones vibrar en el colegio y se te olvida quitarlo? Programa el "
+                + "temporizador: silencia ahora y el sonido vuelve solo después del tiempo que elijas."));
+        Button silenceTimer = actionButton("TEMPORIZADOR DE SILENCIO");
+        silenceTimer.setOnClickListener(v -> startActivity(new Intent(this, SilenceTimerActivity.class)));
+        root.addView(silenceTimer);
+
         root.addView(sectionTitle("Apariencia"));
         themeButton = actionButton("");
         themeButton.setOnClickListener(v -> showThemePicker());
@@ -244,7 +251,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.23.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.24.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -624,10 +631,11 @@ public final class SettingsActivity extends Activity {
                         + "• Si cambias el tiempo de borrado con cuentas en curso, podrás reiniciarlas con el nuevo tiempo o dejarlas como están.\n\n"
                         + "• En Mis palabras clave puedes añadir tus propias palabras de spam o importantes; las tuyas mandan sobre las listas internas.\n\n"
                         + "• Al bloquear un número puedes borrar también sus mensajes existentes de una vez; si una conversación queda vacía, se cierra sola.\n\n"
+                        + "• El temporizador de silencio vibra o silencia el teléfono ahora y restaura el sonido solo después de los minutos que escribas. Si usas No molestar, dale el permiso extra que pide la pantalla.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"
                         + "• Toca un registro en Eliminados recientemente para recuperarlo a la bandeja o archivarlo antes de que venza.\n\n"
-                        + "• Actualizar estado de mensajes programa los entrantes que no tenían cuenta atrás y aplica tus ajustes actuales.\n\n"
+                        + "• Actualizar estado de mensajes programa los entrantes que no tengan cuenta atrás y aplica tus ajustes actuales.\n\n"
                         + "• En Apariencia puedes usar Claro, Oscuro o Automático (sigue el modo del teléfono).\n\n"
                         + "• Puedes tocar Conservar desde la notificación o desde una conversación para evitar que un mensaje se borre.\n\n"
                         + "• Puedes bloquear remitentes desde una conversación. Sus próximos SMS se descartan localmente sin notificación.\n\n"
