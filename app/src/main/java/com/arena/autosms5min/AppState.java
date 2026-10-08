@@ -21,6 +21,7 @@ final class AppState {
     private static final String KEY_LAST_SMS_AT = "last_sms_received_at";
     private static final String KEY_WATCH_RINGER = "watch_ringer";
     private static final String KEY_WATCH_MINUTES = "watch_default_minutes";
+    private static final String KEY_HELP_SHOWN_VERSION = "help_shown_version";
     /** Appearance modes. */
     static final int THEME_LIGHT = 0;
     static final int THEME_DARK = 1;
@@ -222,6 +223,27 @@ final class AppState {
         if (minutes == 60L) return "1 h";
         if (minutes % 60L == 0L) return (minutes / 60L) + " h";
         return minutes + " min";
+    }
+
+    /** Last app versionCode for which the welcome/help message was shown (0 = never). */
+    static int shownHelpVersion(Context context) {
+        return prefs(context).getInt(KEY_HELP_SHOWN_VERSION, 0);
+    }
+
+    static void setShownHelpVersion(Context context, int versionCode) {
+        prefs(context).edit().putInt(KEY_HELP_SHOWN_VERSION, versionCode).apply();
+    }
+
+    /** Installed version code, used to re-show the welcome once after an update. */
+    static int appVersionCode(Context context) {
+        try {
+            android.content.pm.PackageInfo info = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0);
+            if (android.os.Build.VERSION.SDK_INT >= 28) return (int) info.getLongVersionCode();
+            return info.versionCode;
+        } catch (Exception ignored) {
+            return -1;
+        }
     }
 
     private static SharedPreferences prefs(Context context) {

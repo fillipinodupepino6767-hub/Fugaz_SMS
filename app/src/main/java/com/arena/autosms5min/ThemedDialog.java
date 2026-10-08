@@ -38,11 +38,21 @@ final class ThemedDialog {
 
     static void confirm(Activity activity, String title, String message,
                         String cancelLabel, String okLabel, Runnable onOk) {
+        confirm(activity, title, message, cancelLabel, okLabel, null, onOk);
+    }
+
+    /** Confirm with a callback for the cancel button too (used by the help tour). */
+    static void confirm(Activity activity, String title, String message,
+                        String cancelLabel, String okLabel,
+                        Runnable onCancel, Runnable onOk) {
         Dialog dialog = new Dialog(activity);
         LinearLayout card = card(activity, dialog, title, message);
         LinearLayout buttons = buttonRow(activity);
         Button cancel = textButton(activity, cancelLabel == null ? "Cancelar" : cancelLabel, false);
-        cancel.setOnClickListener(v -> dialog.dismiss());
+        cancel.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onCancel != null) onCancel.run();
+        });
         Button ok = textButton(activity, okLabel == null ? "Aceptar" : okLabel, true);
         ok.setOnClickListener(v -> {
             dialog.dismiss();
@@ -52,6 +62,15 @@ final class ThemedDialog {
         buttons.addView(ok);
         card.addView(buttons);
         finish(activity, dialog, card);
+    }
+
+    /**
+     * One floating window of the guided help tour: a ✕ closes the tour and a
+     * strong button shows the next tip (or finishes it).
+     */
+    static void tourStep(Activity activity, String title, String message,
+                         String nextLabel, Runnable onNext, Runnable onClose) {
+        confirm(activity, title, message, "✕ Cerrar", nextLabel, onClose, onNext);
     }
 
     /** Scrollable single-choice sheet in the style of the history retention picker. */

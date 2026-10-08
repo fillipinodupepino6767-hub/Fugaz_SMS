@@ -3,6 +3,19 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.27.1 (v27.1)
+
+- **Ayuda integrada:** icono ❓ en la bandeja y en Configuración abre una
+  guía de 7 ventanitas flotantes (se cierran con ✕, avanza con «Siguiente»)
+  con todas las definiciones y mensajes largos, que ahora van cortos en
+  Configuración. En Ayuda también: mensaje de bienvenida para verlo otra vez.
+- **Bienvenida única:** al abrir la app por primera vez o tras una
+  actualización aparece un mensaje corto con los 2 pasos iniciales; no vuelve
+  a aparecer hasta la próxima versión (mi hermano ya la abrió antes, al
+  actualizar verá el mensaje).
+- **Checklist de estado** en Configuración: ✅/❌ de app predeterminada,
+  permisos, notificaciones y alarmas en una sola vista (o «Todo listo»).
+
 ## Novedades de la versión 0.27.0 (v27)
 
 - **Configuración automática primero:** el botón de app predeterminada va

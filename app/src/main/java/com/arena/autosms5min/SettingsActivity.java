@@ -100,16 +100,26 @@ public final class SettingsActivity extends Activity {
         title.setText("Configuración");
         Ui.text(title, 24f);
         title.setTextColor(ThemeColors.primaryText(dark));
-        toolbar.addView(title);
+        toolbar.addView(title, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button help = new Button(this);
+        help.setText("\u2753");
+        Ui.text(help, 22f);
+        help.setTextColor(ThemeColors.accent(dark));
+        help.setContentDescription("Ayuda");
+        help.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        help.setOnClickListener(v -> HelpTour.start(this));
+        toolbar.addView(help, new LinearLayout.LayoutParams(dp(52), dp(56)));
         root.addView(toolbar);
 
         status = new TextView(this);
         status.setTextColor(ThemeColors.secondaryText(dark));
         Ui.text(status, 15f);
+        status.setLineSpacing(0f, 1.2f);
         status.setPadding(0, dp(6), 0, dp(10));
         root.addView(status);
 
-        root.addView(noteText("Empieza siempre por la configuración automática: desbloquea los ajustes restringidos (necesario en Android 15 y 16 si instalaste el APK), pide permisos y al final la app predeterminada. El botón de app predeterminada va aparte y no interfiere con el automático."));
+        root.addView(noteText("Toca ① primero y sigue los 5 pasos; la app predeterminada es el paso ②. Toca ❓ arriba para las explicaciones."));
 
         Button autoSetup = actionButton("① CONFIGURACIÓN AUTOMÁTICA");
         autoSetup.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
@@ -153,8 +163,7 @@ public final class SettingsActivity extends Activity {
         root.addView(keywords);
 
         root.addView(sectionTitle("Auto-eliminación por tipo"));
-        TextView typeNote = noteText("Elige qué tipos se borran solos con el tiempo elegido. "
-                + "Los importantes se conservan por defecto para proteger códigos y bancos.");
+        TextView typeNote = noteText("Los importantes no se borran solos: así se protegen códigos y bancos.");
         root.addView(typeNote);
         normalDeleteButton = actionButton("");
         normalDeleteButton.setOnClickListener(v -> {
@@ -179,8 +188,7 @@ public final class SettingsActivity extends Activity {
         root.addView(importantDeleteButton);
 
         root.addView(sectionTitle("Deslizar en bandeja"));
-        root.addView(noteText("Elige qué hace cada lado al deslizar un mensaje, como en Gmail. "
-                + "También puedes mantener presionado un mensaje para ver sus opciones."));
+        root.addView(noteText("Como en Gmail. Mantén presionado un mensaje para ver sus opciones."));
         swipeRightButton = actionButton("");
         swipeRightButton.setOnClickListener(v -> showSwipePicker(true));
         root.addView(swipeRightButton);
@@ -228,17 +236,13 @@ public final class SettingsActivity extends Activity {
         root.addView(testSound);
 
         root.addView(sectionTitle("Google Mensajes y RCS"));
-        root.addView(noteText("Esta app solo recibe SMS de texto: los mensajes que llegan con la "
-                + "señal del celular, sin necesidad de internet. No recibe chats por internet "
-                + "(Wi-Fi o datos) como los de Google Mensajes o iPhone: esos solo aparecen en "
-                + "Google Mensajes. Si alguien te escribe por chat y no por SMS, aquí no lo verás."));
+        root.addView(noteText("Solo SMS por señal del celular: los chats por internet (Wi-Fi o datos) no llegan aquí."));
         Button openGm = actionButton("ABRIR GOOGLE MENSAJES (PASAR A SOLO SMS)");
         openGm.setOnClickListener(v -> showGoogleMessagesGuide());
         root.addView(openGm);
 
         root.addView(sectionTitle("Sonido"));
-        root.addView(noteText("¿Pones vibrar en el colegio y se te olvida quitarlo? Programa el "
-                + "temporizador: silencia ahora y el sonido vuelve solo después del tiempo que elijas."));
+        root.addView(noteText("Silencia ahora y el sonido vuelve solo cuando se cumpla el tiempo."));
         Button silenceTimer = actionButton("TEMPORIZADOR DE SILENCIO");
         silenceTimer.setOnClickListener(v -> {
             try {
@@ -249,7 +253,7 @@ public final class SettingsActivity extends Activity {
         });
         root.addView(silenceTimer);
 
-        root.addView(noteText("Vigilancia: si otra app (como Volume Styles) o el sistema pone el teléfono en silencio o vibración, te llega una notificación para activar el temporizador de un toque, con tu tiempo automático. Mientras vigila verás un aviso permanente discreto. Nota honesta: si otra app solo activa No molestar sin cambiar el modo, Android no avisa a otras apps y no se puede detectar."));
+        root.addView(noteText("Si otra app o el sistema silencian el teléfono, te avisamos para activar el temporizador de un toque. No detecta «No molestar» puro."));
         watchButton = actionButton("");
         watchButton.setOnClickListener(v -> {
             boolean enabled = !AppState.watchRinger(this);
@@ -265,7 +269,7 @@ public final class SettingsActivity extends Activity {
         root.addView(watchTimeButton);
 
         root.addView(sectionTitle("Saldo"));
-        root.addView(noteText("Consulta el saldo de cada línea con los canales oficiales: Kolbi (*888# o SMS al 8888), Liberty/Movistar (SMS al 606), Claro (*611#) y el menú de la SIM de tu operador."));
+        root.addView(noteText("Canales oficiales: Kolbi *888# · Movistar/Liberty SMS 606 · Claro *611#."));
         Button balance = actionButton("SALDO DE MIS LÍNEAS");
         balance.setOnClickListener(v -> {
             try {
@@ -282,6 +286,14 @@ public final class SettingsActivity extends Activity {
         root.addView(themeButton);
 
         root.addView(sectionTitle("Ayuda"));
+        Button quickGuide = actionButton("GUÍA RÁPIDA (VENTANAS CON ✕)");
+        quickGuide.setOnClickListener(v -> HelpTour.start(this));
+        root.addView(quickGuide);
+
+        Button welcomeAgain = actionButton("MENSAJE DE BIENVENIDA");
+        welcomeAgain.setOnClickListener(v -> HelpTour.showWelcome(this, null));
+        root.addView(welcomeAgain);
+
         Button howItWorks = actionButton("CÓMO FUNCIONA FUGAZ SMS");
         howItWorks.setOnClickListener(v -> showHowItWorks());
         root.addView(howItWorks);
@@ -292,7 +304,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.27.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.27.1 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -331,12 +343,26 @@ public final class SettingsActivity extends Activity {
 
     private void refreshUi() {
         boolean isDefault = isDefaultSmsApp();
-        if (isDefault) {
-            status.setText("Fugaz SMS está activa como aplicación SMS predeterminada.");
-            setupButton.setVisibility(View.GONE);
+        boolean smsPerms = SetupHelper.hasSmsPermissions(this);
+        boolean notifOn = SetupHelper.notificationsEnabled(this);
+        boolean exactOk = !SetupHelper.needsExactAlarmCheck()
+                || SetupHelper.canScheduleExactAlarms(this);
+        setupButton.setVisibility(isDefault ? View.GONE : View.VISIBLE);
+        if (isDefault && smsPerms && notifOn && exactOk) {
+            status.setText("\u2705 Todo listo: Fugaz SMS est\u00e1 activa y lista para recibir SMS.");
         } else {
-            status.setText("Configura esta app como predeterminada para recibir y administrar SMS.");
-            setupButton.setVisibility(View.VISIBLE);
+            StringBuilder check = new StringBuilder("Estado:\n");
+            check.append(isDefault ? "\u2705" : "\u274C")
+                    .append(" App SMS predeterminada\n");
+            if (!isDefault) {
+                check.append("\u23F3 Permisos de SMS (se piden despu\u00e9s del paso \u2461)");
+            } else {
+                check.append(smsPerms ? "\u2705" : "\u274C").append(" Permisos de SMS");
+            }
+            check.append("\n");
+            check.append(notifOn ? "\u2705" : "\u274C").append(" Notificaciones\n");
+            check.append(exactOk ? "\u2705" : "\u274C").append(" Alarmas exactas");
+            status.setText(check.toString());
         }
         retentionButton.setText("TIEMPO DE BORRADO: " + AppState.retentionLabel(this).toUpperCase());
         blocklistButton.setText("NÚMEROS BLOQUEADOS: " + Blocklist.count(this));

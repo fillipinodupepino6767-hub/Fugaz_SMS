@@ -61,8 +61,19 @@ public final class MainActivity extends Activity {
         ThemeColors.applySystemBars(this, dark);
         buildUi();
         NotificationHelper.ensureChannels(this);
-        // Automatic setup on launch: request whatever runtime permissions are missing.
-        SetupHelper.requestMissingRuntimePermissions(this);
+        // One-time welcome (first install or after an update) comes before system
+        // dialogs; permissions are requested as soon as the user picks an option.
+        boolean welcomeShown = HelpTour.showWelcomeIfNeeded(this,
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        SetupHelper.requestMissingRuntimePermissions(MainActivity.this);
+                    }
+                });
+        if (!welcomeShown) {
+            // Automatic setup on launch: request whatever runtime permissions are missing.
+            SetupHelper.requestMissingRuntimePermissions(this);
+        }
         handleComposeIntent(getIntent());
     }
 
@@ -121,6 +132,16 @@ public final class MainActivity extends Activity {
         settings.setMinWidth(dp(52));
         settings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         toolbar.addView(settings, new LinearLayout.LayoutParams(dp(52), dp(52)));
+
+        Button help = new Button(this);
+        help.setText("\u2753");
+        Ui.text(help, 22f);
+        help.setTextColor(ThemeColors.accent(dark));
+        help.setContentDescription("Ayuda");
+        help.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        help.setMinWidth(dp(52));
+        help.setOnClickListener(v -> HelpTour.start(this));
+        toolbar.addView(help, new LinearLayout.LayoutParams(dp(52), dp(52)));
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
