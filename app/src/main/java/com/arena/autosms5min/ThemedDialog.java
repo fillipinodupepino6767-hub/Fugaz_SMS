@@ -68,7 +68,8 @@ final class ThemedDialog {
             option.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
             option.setText((selected ? "\u2713  " : "\u25CB  ") + labels[i]
                     + (selected ? "  \u00B7 actual" : ""));
-            option.setTextSize(16);
+            Ui.text(option, 16f);
+            option.setMinHeight(dp(activity, 48));
             option.setTextColor(ThemeColors.accent(dark));
             option.setBackground(ThemeColors.rounded(activity,
                     selected ? ThemeColors.sentBubble(dark) : ThemeColors.background(dark), 10));
@@ -101,7 +102,8 @@ final class ThemedDialog {
             row.setAllCaps(false);
             row.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
             row.setText(items[i]);
-            row.setTextSize(16);
+            Ui.text(row, 16f);
+            row.setMinHeight(dp(activity, 48));
             row.setTextColor(ThemeColors.primaryText(dark));
             row.setBackground(ThemeColors.rounded(activity, ThemeColors.background(dark), 10));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -162,7 +164,8 @@ final class ThemedDialog {
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
         button.setText(text);
-        button.setTextSize(16);
+        Ui.text(button, 16f);
+        button.setMinHeight(dp(activity, 48));
         button.setTextColor(ThemeColors.accent(dark));
         button.setBackground(ThemeColors.rounded(activity,
                 selected ? ThemeColors.sentBubble(dark) : ThemeColors.background(dark), 10));
@@ -184,14 +187,14 @@ final class ThemedDialog {
         if (title != null) {
             TextView heading = new TextView(activity);
             heading.setText(title);
-            heading.setTextSize(22);
+            Ui.text(heading, 22f);
             heading.setTextColor(ThemeColors.primaryText(dark));
             card.addView(heading);
         }
         if (message != null && !message.isEmpty()) {
             TextView body = new TextView(activity);
             body.setText(message);
-            body.setTextSize(16);
+            Ui.text(body, 16f);
             body.setTextColor(ThemeColors.secondaryText(dark));
             body.setPadding(0, dp(activity, 10), 0, dp(activity, 12));
             card.addView(body);
@@ -216,6 +219,8 @@ final class ThemedDialog {
         Button button = new Button(activity);
         button.setText(text);
         button.setAllCaps(false);
+        Ui.text(button, 16f);
+        button.setMinHeight(dp(activity, 48));
         button.setTextColor(ThemeColors.accent(dark));
         button.setBackgroundColor(Color.TRANSPARENT);
         if (strong) button.setTypeface(button.getTypeface(), Typeface.BOLD);
@@ -237,6 +242,6 @@ final class ThemedDialog {
     }
 
     private static int dp(Activity activity, int value) {
-        return (int) (value * activity.getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(activity, value);
     }
 }

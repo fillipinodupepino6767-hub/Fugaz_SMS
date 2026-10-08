@@ -71,21 +71,20 @@ public final class DeletedHistoryActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         Button back = new Button(this);
         back.setText("‹");
-        back.setTextSize(32);
-        back.setTextColor(ThemeColors.accent(dark));
-        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarBack(back, dark);
         back.setOnClickListener(v -> finish());
-        toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(52)));
+        toolbar.addView(back, new LinearLayout.LayoutParams(dp(52), dp(56)));
         TextView title = new TextView(this);
         title.setText("Eliminados recientemente");
-        title.setTextSize(22);
+        Ui.text(title, 22f);
         title.setTextColor(ThemeColors.primaryText(dark));
         toolbar.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button clear = new Button(this);
         clear.setText("VACIAR");
         clear.setTextColor(ThemeColors.accent(dark));
-        clear.setTextSize(14);
+        Ui.text(clear, 14f);
         clear.setAllCaps(false);
+        clear.setMinHeight(dp(48));
         // Avoid the default white Material button against the dark interface.
         clear.setBackground(roundedBackground(ThemeColors.incomingBubble(dark), 10));
         clear.setOnClickListener(v -> confirmClear());
@@ -112,7 +111,8 @@ public final class DeletedHistoryActivity extends Activity {
             public View getView(int position, View convertView, ViewGroup parent) {
                 TextView row = (TextView) super.getView(position, convertView, parent);
                 row.setTextColor(ThemeColors.primaryText(dark));
-                row.setTextSize(15);
+                Ui.text(row, 15f);
+                row.setMinHeight(dp(52));
                 row.setPadding(dp(12), dp(14), dp(12), dp(14));
                 row.setBackgroundColor(ThemeColors.incomingBubble(dark));
                 return row;
@@ -126,7 +126,7 @@ public final class DeletedHistoryActivity extends Activity {
         empty = new TextView(this);
         empty.setText("No hay eliminaciones recientes.\nEl registro conserva remitente y vista previa durante 24 horas.");
         empty.setGravity(Gravity.CENTER);
-        empty.setTextSize(17);
+        Ui.text(empty, 17f);
         empty.setTextColor(ThemeColors.secondaryText(dark));
         root.addView(empty, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -271,13 +271,13 @@ public final class DeletedHistoryActivity extends Activity {
 
         TextView heading = new TextView(this);
         heading.setText("Tiempo de eliminados recientemente");
-        heading.setTextSize(22);
+        Ui.text(heading, 22f);
         heading.setTextColor(ThemeColors.primaryText(dark));
         card.addView(heading);
 
         TextView explanation = new TextView(this);
         explanation.setText("Elige cuánto tiempo conservar las vistas previas. Al vencer, se eliminan definitivamente. Reducir el tiempo puede borrar entradas existentes; aumentarlo no recupera las ya eliminadas.");
-        explanation.setTextSize(16);
+        Ui.text(explanation, 16f);
         explanation.setTextColor(ThemeColors.secondaryText(dark));
         explanation.setPadding(0, dp(10), 0, dp(12));
         card.addView(explanation);
@@ -290,7 +290,8 @@ public final class DeletedHistoryActivity extends Activity {
             option.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
             option.setText((selected ? "\u2713  " : "\u25CB  ") + labels[i]
                     + (selected ? "  \u00B7 actual" : ""));
-            option.setTextSize(16);
+            Ui.text(option, 16f);
+            option.setMinHeight(dp(48));
             option.setTextColor(ThemeColors.accent(dark));
             option.setBackground(roundedBackground(selected ? ThemeColors.sentBubble(dark)
                     : ThemeColors.background(dark), 10));
@@ -346,6 +347,6 @@ public final class DeletedHistoryActivity extends Activity {
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 }

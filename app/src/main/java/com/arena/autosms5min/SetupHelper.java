@@ -7,6 +7,7 @@ import android.app.NotificationManager;
 import android.app.role.RoleManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -17,12 +18,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * One place for every system requirement: SMS role, runtime permissions,
- * notifications and exact alarms (Android 12+). Powers the automatic setup
- * flow and the warning banner on the inbox.
+ * One place for every system requirement: restricted settings (Android 13–16
+ * sideload unlock), runtime permissions, SMS role, notifications and exact
+ * alarms. Powers the automatic setup flow and the warning banner on the inbox.
+ *
+ * Order matters on Android 15/16 for sideloaded APKs: Allow restricted settings
+ * first, then runtime permissions, then default SMS app, then the rest.
  */
 final class SetupHelper {
     static final int REQUEST_RUNTIME = 410;
+    private static final String PREFS = "setup_helper";
+    private static final String KEY_PENDING = "auto_setup_pending";
+    private static final String KEY_RESTRICTED_DONE = "restricted_step_done";
+    private static final String KEY_RESTRICTED_AT = "restricted_opened_at";
+    private static long lastContinueAt;
 
     private SetupHelper() { }
 
@@ -103,11 +112,48 @@ final class SetupHelper {
         return null;
     }
 
+    /** True when auto-setup left the app to a system screen and should resume on return. */
+    static boolean isAutoSetupPending(Context context) {
+        return setupPrefs(context).getBoolean(KEY_PENDING, false);
+    }
+
+    static void clearAutoSetupPending(Context context) {
+        setupPrefs(context).edit().putBoolean(KEY_PENDING, false).apply();
+    }
+
+    private static void markPending(Context context) {
+        setupPrefs(context).edit().putBoolean(KEY_PENDING, true).apply();
+    }
+
+    private static boolean restrictedStepDone(Context context) {
+        return setupPrefs(context).getBoolean(KEY_RESTRICTED_DONE, false);
+    }
+
+    private static void markRestrictedDone(Context context) {
+        setupPrefs(context).edit()
+                .putBoolean(KEY_RESTRICTED_DONE, true)
+                .putLong(KEY_RESTRICTED_AT, System.currentTimeMillis())
+                .apply();
+    }
+
+    /**
+     * Android 13+ can lock sensitive toggles (SMS on 15/16 sideload) behind
+     * "Allow restricted settings". There is no public API to detect or open
+     * that toggle directly — only App info, where the user taps ⋮.
+     */
+    private static boolean needsRestrictedSettingsStep(Context context) {
+        if (Build.VERSION.SDK_INT < 33) return false;
+        if (restrictedStepDone(context)) return false;
+        // Needed when SMS is not fully ready yet (role or permissions).
+        return !isDefaultSms(context) || !hasSmsPermissions(context);
+    }
+
     /** Requests every missing runtime permission in a single system dialog when possible. */
     static void requestMissingRuntimePermissions(Activity activity) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
         List<String> missing = new ArrayList<>();
-        // SMS permissions are only useful once the app holds the SMS role.
+        // SMS permissions only make sense once the app holds the SMS role; on
+        // Android 15/16 sideload they also need restricted settings unlocked first.
         if (isDefaultSms(activity) && !hasSmsPermissions(activity)) {
             if (activity.checkSelfPermission(Manifest.permission.RECEIVE_SMS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -193,44 +239,137 @@ final class SetupHelper {
     }
 
     /**
-     * Step-by-step automatic setup. Runtime permissions are requested directly;
-     * system screens (default app, notifications, exact alarms) open on demand.
+     * Opens App info so the user can unlock restricted settings (⋮ menu).
+     * On Motorola the ⋮ sometimes appears only after opening Permissions.
+     */
+    static void openRestrictedSettingsGuide(Activity activity) {
+        markRestrictedDone(activity);
+        markPending(activity);
+        openAppDetails(activity);
+    }
+
+    /**
+     * Resume after returning from a system screen during automatic setup.
+     * Call from Activity.onResume when {@link #isAutoSetupPending} is true.
+     */
+    static void continueAutoSetupIfPending(Activity activity, int roleRequestCode) {
+        if (!isAutoSetupPending(activity)) return;
+        long now = System.currentTimeMillis();
+        if (now - lastContinueAt < 800L) return; // avoid double fire from resume + result
+        lastContinueAt = now;
+        clearAutoSetupPending(activity);
+        runAutoSetup(activity, roleRequestCode, true);
+    }
+
+    /**
+     * Step-by-step automatic setup in the order Android 15/16 needs for
+     * sideloaded SMS apps:
+     * 1) Allow restricted settings (App info → ⋮)
+     * 2) Runtime permissions (notifications, contacts; SMS after default)
+     * 3) Notifications channel access
+     * 4) Exact alarms
+     * 5) Default SMS app (last — separate button also available)
+     *
+     * @param resuming true when continuing after a system screen, so we skip
+     *                 re-showing the restricted-settings intro if already done.
      */
     static void runAutoSetup(Activity activity, int roleRequestCode) {
-        boolean smsMissing = isDefaultSms(activity) && !hasSmsPermissions(activity);
+        runAutoSetup(activity, roleRequestCode, false);
+    }
+
+    static void runAutoSetup(Activity activity, int roleRequestCode, boolean resuming) {
+        // Step 1 — restricted settings unlock (critical on Android 15/16 sideload).
+        if (needsRestrictedSettingsStep(activity)) {
+            String body = "En Android 13 a 16, las apps instaladas fuera de Play Store "
+                    + "bloquean permisos sensibles (SMS) hasta que tú los desbloquees.\n\n"
+                    + "En la pantalla que se abrirá:\n"
+                    + "1. Toca el menú ⋮ (arriba a la derecha). En Motorola a veces "
+                    + "aparece al entrar primero en Permisos.\n"
+                    + "2. Toca «Permitir ajustes restringidos».\n"
+                    + "3. Confirma con PIN, patrón o huella.\n"
+                    + "4. Vuelve a Fugaz SMS: la configuración automática continuará sola.\n\n"
+                    + "Si no ves esa opción, la app ya está desbloqueada o tu Android no la pide: "
+                    + "vuelve y toca de nuevo Configuración automática.";
+            ThemedDialog.confirm(activity, "Paso 1: ajustes restringidos",
+                    body, "Ahora no", "Abrir info de la app",
+                    () -> openRestrictedSettingsGuide(activity));
+            return;
+        }
+
+        // Step 2 — runtime permissions we can request without being default SMS.
         boolean notifMissing = !hasNotificationPermission(activity);
         boolean contactsMissing = !hasContactsPermission(activity);
-        if (smsMissing || notifMissing || contactsMissing) {
+        boolean smsMissing = isDefaultSms(activity) && !hasSmsPermissions(activity);
+        if (notifMissing || contactsMissing || smsMissing) {
             requestMissingRuntimePermissions(activity);
-            ThemedDialog.message(activity, "Permisos solicitados",
-                    "Acepta los permisos del sistema. Después vuelve a tocar Configuración automática "
-                            + "para continuar con los pasos que falten.",
+            markPending(activity);
+            ThemedDialog.message(activity, "Paso 2: permisos",
+                    "Acepta los permisos del sistema (notificaciones, contactos"
+                            + (smsMissing ? " y SMS" : "")
+                            + "). Al volver, la configuración automática sigue con lo que falte.",
                     "Entendido");
             return;
         }
-        if (!isDefaultSms(activity)) {
-            ThemedDialog.confirm(activity, "Paso 1: app predeterminada",
-                    "Esta app debe ser la aplicación SMS predeterminada para recibir y borrar SMS. "
-                            + "¿Quieres configurarla ahora?",
-                    "Cancelar", "Continuar", () -> requestSmsRole(activity, roleRequestCode));
-            return;
-        }
+
+        // Step 3 — notifications blocked at channel / app level.
         if (!notificationsEnabled(activity)) {
-            ThemedDialog.confirm(activity, "Paso 2: notificaciones",
+            markPending(activity);
+            ThemedDialog.confirm(activity, "Paso 3: notificaciones",
                     "Las notificaciones están bloqueadas en los ajustes del teléfono. Sin ellas no verás "
                             + "avisos de SMS nuevos ni de eliminados. ¿Abrir los ajustes de notificaciones?",
-                    "Cancelar", "Abrir ajustes", () -> openNotificationSettings(activity));
+                    "Cancelar", "Abrir ajustes", () -> {
+                        markPending(activity);
+                        openNotificationSettings(activity);
+                    });
             return;
         }
+
+        // Step 4 — exact alarms (Android 12+).
         if (!canScheduleExactAlarms(activity)) {
-            ThemedDialog.confirm(activity, "Paso 3: alarmas exactas",
+            markPending(activity);
+            ThemedDialog.confirm(activity, "Paso 4: alarmas exactas",
                     "En Android 12 o superior esta app necesita el permiso de alarmas exactas para borrar "
                             + "cada SMS a su hora. Sin él, el borrado puede retrasarse. ¿Abrir el ajuste?",
-                    "Cancelar", "Abrir ajuste", () -> openExactAlarmSettings(activity));
+                    "Cancelar", "Abrir ajuste", () -> {
+                        markPending(activity);
+                        openExactAlarmSettings(activity);
+                    });
             return;
         }
+
+        // Step 5 — default SMS app last, so restricted settings + other perms
+        // are already in place and the role request is more likely to stick.
+        if (!isDefaultSms(activity)) {
+            ThemedDialog.confirm(activity, "Paso 5: app SMS predeterminada",
+                    "Último paso: esta app debe ser la aplicación SMS predeterminada para recibir y borrar SMS. "
+                            + "También puedes hacerlo después con el botón aparte «Configurar como app SMS predeterminada». "
+                            + "¿Configurarla ahora?",
+                    "Después", "Configurar ahora", () -> {
+                        markPending(activity);
+                        requestSmsRole(activity, roleRequestCode);
+                    });
+            return;
+        }
+
+        // Default is set but SMS runtime perms may still be missing (first grant after role).
+        if (!hasSmsPermissions(activity)) {
+            requestMissingRuntimePermissions(activity);
+            markPending(activity);
+            ThemedDialog.message(activity, "Permisos de SMS",
+                    "Acepta los permisos de SMS. Si aparecen en gris, vuelve a Configuración automática "
+                            + "y repite el paso de ajustes restringidos (menú ⋮ en la info de la app).",
+                    "Entendido");
+            return;
+        }
+
+        clearAutoSetupPending(activity);
         ThemedDialog.message(activity, "Todo listo",
-                "App predeterminada, permisos, notificaciones y alarmas configurados correctamente.",
+                "Ajustes restringidos, permisos, notificaciones, alarmas y app predeterminada "
+                        + "están configurados correctamente.",
                 "Entendido");
+    }
+
+    private static SharedPreferences setupPrefs(Context context) {
+        return context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 }

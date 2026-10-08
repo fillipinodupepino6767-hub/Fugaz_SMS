@@ -11,15 +11,15 @@ def hasReleaseSigning = releaseStorePath && releaseStorePassword && releaseKeyAl
 
 android {
     namespace 'com.arena.autosms5min'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         // Keep this fixed. Changing it would make Android treat updates as a different app.
         applicationId 'com.arena.autosms5min'
         minSdk 23
-        targetSdk 35
-        versionCode 27
-        versionName '0.26.0'
+        targetSdk 36
+        versionCode 28
+        versionName '0.27.0'
     }
 
     signingConfigs {

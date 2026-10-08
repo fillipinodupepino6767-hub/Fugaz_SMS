@@ -80,19 +80,16 @@ public final class ConversationActivity extends Activity {
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
         Button back = new Button(this);
         back.setText("‹");
-        back.setTextSize(32);
-        back.setTextColor(ThemeColors.accent(dark));
-        back.setContentDescription("Volver");
-        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarBack(back, dark);
         back.setOnClickListener(v -> finish());
-        headerRow.addView(back, new LinearLayout.LayoutParams(dp(48), dp(56)));
+        headerRow.addView(back, new LinearLayout.LayoutParams(dp(52), dp(56)));
         photoView = new ImageView(this);
         photoView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         LinearLayout.LayoutParams photoParams = new LinearLayout.LayoutParams(dp(56), dp(56));
         photoParams.setMargins(0, 0, dp(10), 0);
         headerRow.addView(photoView, photoParams);
         heading = new TextView(this);
-        heading.setTextSize(18);
+        Ui.text(heading, 18f);
         heading.setTextColor(ThemeColors.primaryText(dark));
         headerRow.addView(heading, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
@@ -120,6 +117,8 @@ public final class ConversationActivity extends Activity {
         EditText searchBox = new EditText(this);
         searchBox.setHint("🔎 Buscar en esta conversación");
         searchBox.setSingleLine(true);
+        Ui.text(searchBox, 16f);
+        searchBox.setMinHeight(dp(48));
         searchBox.setHintTextColor(ThemeColors.secondaryText(dark));
         searchBox.setTextColor(ThemeColors.primaryText(dark));
         searchBox.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
@@ -144,7 +143,7 @@ public final class ConversationActivity extends Activity {
         root.addView(searchRow);
 
         resultCount = new TextView(this);
-        resultCount.setTextSize(13);
+        Ui.text(resultCount, 13f);
         resultCount.setTextColor(ThemeColors.secondaryText(dark));
         resultCount.setPadding(dp(4), dp(2), dp(4), 0);
         resultCount.setVisibility(View.GONE);
@@ -248,7 +247,7 @@ public final class ConversationActivity extends Activity {
             String who = item.type == SmsStore.TYPE_SENT ? "Tú" : name;
             MessageClassifier.Result classification = MessageClassifier.classify(this, item.body);
             row.setText(who + "\n[" + classification.display() + "]\n" + item.body + "\n" + format.format(item.date));
-            row.setTextSize(16);
+            Ui.text(row, 16f);
             row.setTextColor(ThemeColors.primaryText(dark));
             card.addView(row);
 
@@ -413,6 +412,6 @@ public final class ConversationActivity extends Activity {
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 }

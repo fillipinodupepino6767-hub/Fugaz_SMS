@@ -14,7 +14,7 @@ import java.text.DateFormat;
 final class NotificationHelper {
     private static final String CHANNEL_ID = "incoming_sms";
     private static final String DELETION_CHANNEL_ID = "deleted_sms";
-    private static final String WATCH_CHANNEL_ID = "ringer_watch";
+    private static final String WATCH_CHANNEL_ID = "ringer_watch_min";
     private static final int TEST_NOTIFICATION_ID = 987654;
     private static final int WATCH_PROMPT_ID = 610027;
     private static final int WATCH_ARMED_ID = 610028;
@@ -237,6 +237,7 @@ final class NotificationHelper {
         builder.setSmallIcon(android.R.drawable.sym_action_chat)
                 .setContentTitle("Vigilando modo de sonido")
                 .setContentText("Toca para abrir el temporizador de silencio.")
+                .setPriority(Notification.PRIORITY_MIN)
                 .setContentIntent(openIntent)
                 .setOngoing(true)
                 .setWhen(System.currentTimeMillis());
@@ -259,7 +260,7 @@ final class NotificationHelper {
             deleted.setDescription("Avisos después de eliminar un SMS temporal automáticamente");
             manager.createNotificationChannel(deleted);
             NotificationChannel watch = new NotificationChannel(WATCH_CHANNEL_ID,
-                    "Vigilancia de sonido", NotificationManager.IMPORTANCE_LOW);
+                    "Vigilancia de sonido", NotificationManager.IMPORTANCE_MIN);
             watch.setDescription("Aviso permanente mientras se vigila el modo de sonido");
             manager.createNotificationChannel(watch);
         }

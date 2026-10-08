@@ -50,14 +50,12 @@ public final class ArchivedActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         Button back = new Button(this);
         back.setText("‹");
-        back.setTextSize(32);
-        back.setTextColor(ThemeColors.accent(dark));
-        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarBack(back, dark);
         back.setOnClickListener(v -> finish());
-        toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(52)));
+        toolbar.addView(back, new LinearLayout.LayoutParams(dp(52), dp(56)));
         TextView title = new TextView(this);
         title.setText("Archivados");
-        title.setTextSize(22);
+        Ui.text(title, 22f);
         title.setTextColor(ThemeColors.primaryText(dark));
         toolbar.addView(title);
         root.addView(toolbar);
@@ -74,7 +72,8 @@ public final class ArchivedActivity extends Activity {
             public View getView(int position, View convertView, ViewGroup parent) {
                 TextView row = (TextView) super.getView(position, convertView, parent);
                 row.setTextColor(ThemeColors.primaryText(dark));
-                row.setTextSize(16);
+                Ui.text(row, 16f);
+                row.setMinHeight(dp(52));
                 row.setPadding(dp(16), dp(14), dp(16), dp(14));
                 row.setBackgroundColor(ThemeColors.background(dark));
                 return row;
@@ -92,7 +91,7 @@ public final class ArchivedActivity extends Activity {
         empty = new TextView(this);
         empty.setText("No hay mensajes archivados.\nDesliza un mensaje en la bandeja o manténlo presionado para archivarlo.");
         empty.setGravity(Gravity.CENTER);
-        empty.setTextSize(17);
+        Ui.text(empty, 17f);
         empty.setTextColor(ThemeColors.secondaryText(dark));
         root.addView(empty, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -167,6 +166,6 @@ public final class ArchivedActivity extends Activity {
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 }

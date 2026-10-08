@@ -73,6 +73,9 @@ public final class MainActivity extends Activity {
             recreate();
             return;
         }
+        if (SetupHelper.isAutoSetupPending(this)) {
+            SetupHelper.continueAutoSetupIfPending(this, REQUEST_SMS_ROLE);
+        }
         refresh();
         refreshHandler.removeCallbacks(refreshTicker);
         refreshHandler.postDelayed(refreshTicker, 1_000L);
@@ -87,6 +90,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        // Auto-setup resume is handled in onResume.
         refresh();
     }
 
@@ -110,7 +114,7 @@ public final class MainActivity extends Activity {
 
         Button settings = new Button(this);
         settings.setText("⚙");
-        settings.setTextSize(25);
+        Ui.text(settings, 25f);
         settings.setTextColor(ThemeColors.accent(dark));
         settings.setContentDescription("Configuración");
         settings.setBackgroundColor(android.graphics.Color.TRANSPARENT);
@@ -123,18 +127,18 @@ public final class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("Fugaz SMS");
         title.setTextColor(ThemeColors.primaryText(dark));
-        title.setTextSize(23);
+        Ui.text(title, 23f);
         subtitle = new TextView(this);
         subtitle.setText("Bandeja temporal y privada");
         subtitle.setTextColor(ThemeColors.secondaryText(dark));
-        subtitle.setTextSize(13);
+        Ui.text(subtitle, 13f);
         titles.addView(title);
         titles.addView(subtitle);
         toolbar.addView(titles, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button archived = new Button(this);
         archived.setText("\uD83D\uDCE6");
-        archived.setTextSize(20);
+        Ui.text(archived, 20f);
         archived.setContentDescription("Archivados");
         archived.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         archived.setMinWidth(dp(52));
@@ -142,7 +146,7 @@ public final class MainActivity extends Activity {
         toolbar.addView(archived, new LinearLayout.LayoutParams(dp(52), dp(52)));
         Button deletedHistory = new Button(this);
         deletedHistory.setText("⌛");
-        deletedHistory.setTextSize(22);
+        Ui.text(deletedHistory, 22f);
         deletedHistory.setTextColor(ThemeColors.accent(dark));
         deletedHistory.setContentDescription("Eliminados recientemente");
         deletedHistory.setBackgroundColor(android.graphics.Color.TRANSPARENT);
@@ -162,14 +166,16 @@ public final class MainActivity extends Activity {
         warningBanner.setLayoutParams(bannerParams);
         warningText = new TextView(this);
         warningText.setTextColor(ThemeColors.primaryText(dark));
-        warningText.setTextSize(14);
+        Ui.text(warningText, 15f);
         warningBanner.addView(warningText, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button repair = new Button(this);
         repair.setText("REPARAR");
         repair.setAllCaps(false);
+        Ui.text(repair, 14f);
         repair.setTextColor(ThemeColors.accent(dark));
         repair.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        repair.setMinHeight(dp(48));
         repair.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
         warningBanner.addView(repair);
         root.addView(warningBanner);
@@ -184,10 +190,12 @@ public final class MainActivity extends Activity {
         searchBox = new EditText(this);
         searchBox.setHint("🔎 Buscar por nombre, número o texto");
         searchBox.setSingleLine(true);
+        Ui.text(searchBox, 16f);
         searchBox.setHintTextColor(ThemeColors.secondaryText(dark));
         searchBox.setTextColor(ThemeColors.primaryText(dark));
-        searchBox.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
-        searchBox.setPadding(dp(14), dp(10), dp(14), dp(10));
+        searchBox.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 12));
+        searchBox.setPadding(dp(14), dp(12), dp(14), dp(12));
+        searchBox.setMinHeight(dp(48));
         searchBox.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
@@ -236,7 +244,7 @@ public final class MainActivity extends Activity {
         emptyTitle = new TextView(this);
         emptyTitle.setText("Sin mensajes");
         emptyTitle.setTextColor(ThemeColors.primaryText(dark));
-        emptyTitle.setTextSize(24);
+        Ui.text(emptyTitle, 24f);
         emptyTitle.setGravity(Gravity.CENTER);
         emptyTitle.setPadding(0, dp(12), 0, dp(4));
         emptyState.addView(emptyTitle);
@@ -244,7 +252,7 @@ public final class MainActivity extends Activity {
         emptyBody = new TextView(this);
         emptyBody.setText("Todo despejado y limpio ✨\nTu bandeja se tomó un respiro.");
         emptyBody.setTextColor(ThemeColors.secondaryText(dark));
-        emptyBody.setTextSize(16);
+        Ui.text(emptyBody, 16f);
         emptyBody.setGravity(Gravity.CENTER);
         emptyState.addView(emptyBody);
         root.addView(emptyState, new LinearLayout.LayoutParams(
@@ -314,7 +322,7 @@ public final class MainActivity extends Activity {
                         }
                         Paint label = new Paint();
                         label.setColor(Color.WHITE);
-                        label.setTextSize(dp(16));
+                        label.setTextSize(Ui.dp(MainActivity.this, Ui.sp(MainActivity.this, 16f)));
                         label.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
                         String text = delete ? "ELIMINAR" : "ARCHIVAR";
                         float centerY = row.getTop() + row.getHeight() / 2f + dp(6);
@@ -471,7 +479,7 @@ public final class MainActivity extends Activity {
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 
     /** Adapter: one row per message, with a letter avatar plus the styled text. */
@@ -519,9 +527,9 @@ public final class MainActivity extends Activity {
 
         @Override
         public Holder onCreateViewHolder(ViewGroup parent, int viewType) {
-            float density = parent.getContext().getResources().getDisplayMetrics().density;
-            int pad = (int) (12 * density + .5f);
-            int avatarSize = (int) (52 * density + .5f);
+            android.content.Context ctx = parent.getContext();
+            int pad = Ui.dp(ctx, 14);
+            int avatarSize = Ui.dp(ctx, 56);
             LinearLayout row = new LinearLayout(parent.getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
@@ -532,14 +540,14 @@ public final class MainActivity extends Activity {
             TextView avatar = new TextView(parent.getContext());
             avatar.setGravity(Gravity.CENTER);
             avatar.setTextColor(Color.WHITE);
-            avatar.setTextSize(20);
+            Ui.text(avatar, 20f);
             avatar.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
             LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(avatarSize, avatarSize);
             avatarParams.setMargins(0, 0, pad, 0);
             row.addView(avatar, avatarParams);
             TextView text = new TextView(parent.getContext());
             text.setTextColor(ThemeColors.primaryText(dark));
-            text.setTextSize(16);
+            Ui.text(text, 16f);
             row.addView(text, new LinearLayout.LayoutParams(0,
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             return new Holder(row, avatar, text);

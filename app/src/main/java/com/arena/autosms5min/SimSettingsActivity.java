@@ -54,14 +54,12 @@ public final class SimSettingsActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         Button back = new Button(this);
         back.setText("‹");
-        back.setTextSize(32);
-        back.setTextColor(ThemeColors.accent(dark));
-        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarBack(back, dark);
         back.setOnClickListener(v -> finish());
-        toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(52)));
+        toolbar.addView(back, new LinearLayout.LayoutParams(dp(52), dp(56)));
         TextView title = new TextView(this);
         title.setText("SIM y envío");
-        title.setTextSize(24);
+        Ui.text(title, 24f);
         title.setTextColor(ThemeColors.primaryText(dark));
         toolbar.addView(title);
         root.addView(toolbar);
@@ -185,10 +183,8 @@ public final class SimSettingsActivity extends Activity {
     private Button actionButton(String text) {
         Button button = new Button(this);
         button.setText(text);
-        button.setAllCaps(false);
+        Ui.styleActionButton(button, dark);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        button.setTextColor(ThemeColors.primaryText(dark));
-        button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, dp(4), 0, dp(4));
@@ -197,6 +193,6 @@ public final class SimSettingsActivity extends Activity {
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 }

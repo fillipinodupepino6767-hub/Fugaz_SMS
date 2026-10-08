@@ -61,15 +61,12 @@ public final class BalanceActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         Button back = new Button(this);
         back.setText("‹");
-        back.setTextSize(32);
-        back.setTextColor(ThemeColors.accent(dark));
-        back.setContentDescription("Volver");
-        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarBack(back, dark);
         back.setOnClickListener(v -> finish());
-        toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(52)));
+        toolbar.addView(back, new LinearLayout.LayoutParams(dp(52), dp(56)));
         TextView title = new TextView(this);
         title.setText("Saldo de mis líneas");
-        title.setTextSize(22);
+        Ui.text(title, 22f);
         title.setTextColor(ThemeColors.primaryText(dark));
         toolbar.addView(title);
         root.addView(toolbar);
@@ -138,7 +135,7 @@ public final class BalanceActivity extends Activity {
         TextView header = new TextView(this);
         header.setText("SIM " + (card.slotIndex + 1) + " · " + plan.carrierLabel
                 + "\nNúmero: " + card.number);
-        header.setTextSize(17);
+        Ui.text(header, 17f);
         header.setTextColor(ThemeColors.primaryText(dark));
         header.setPadding(dp(4), dp(14), dp(4), dp(2));
         cards.addView(header);
@@ -215,13 +212,11 @@ public final class BalanceActivity extends Activity {
     private Button actionButton(String text) {
         Button button = new Button(this);
         button.setText(text);
-        button.setAllCaps(false);
+        Ui.styleActionButton(button, dark);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        button.setTextColor(ThemeColors.accent(dark));
-        button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.setMargins(0, dp(3), 0, dp(3));
+        params.setMargins(0, dp(4), 0, dp(4));
         button.setLayoutParams(params);
         return button;
     }
@@ -229,13 +224,14 @@ public final class BalanceActivity extends Activity {
     private TextView noteText(String text) {
         TextView note = new TextView(this);
         note.setText(text);
-        note.setTextSize(14);
+        Ui.text(note, 15f);
         note.setTextColor(ThemeColors.secondaryText(dark));
-        note.setPadding(dp(4), 0, dp(4), dp(6));
+        note.setPadding(dp(4), 0, dp(4), dp(8));
+        note.setLineSpacing(0f, 1.15f);
         return note;
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 }

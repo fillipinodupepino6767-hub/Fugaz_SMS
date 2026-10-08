@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ServiceInfo;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.IBinder;
@@ -15,6 +16,9 @@ import android.os.IBinder;
  * registers it dynamically. On a real normal -> silent/vibrate transition
  * (Volume Styles, system buttons, any app) it posts a prompt notification;
  * the user arms the timer with one tap. Nothing is ever armed by itself.
+ *
+ * On Android 14+ the service uses the specialUse FGS type (declared in the
+ * manifest with a subtype explaining the user-opted ringer watchdog).
  */
 public final class RingerWatchService extends Service {
     private static final int FOREGROUND_ID = 610026;
@@ -47,12 +51,34 @@ public final class RingerWatchService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        startForeground(FOREGROUND_ID, NotificationHelper.watchServiceNotification(this));
+        promoteToForeground();
         RingerTimer.setLastSeenMode(this, currentMode());
         if (!registered) {
-            registerReceiver(ringerChanged,
-                    new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION));
+            IntentFilter filter = new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION);
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(ringerChanged, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(ringerChanged, filter);
+            }
             registered = true;
+        }
+    }
+
+    private void promoteToForeground() {
+        android.app.Notification notification =
+                NotificationHelper.watchServiceNotification(this);
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(FOREGROUND_ID, notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } else {
+                startForeground(FOREGROUND_ID, notification);
+            }
+        } catch (Exception failed) {
+            // Last-resort: try without the typed overload so older ROMs still work.
+            try {
+                startForeground(FOREGROUND_ID, notification);
+            } catch (Exception ignored) { }
         }
     }
 

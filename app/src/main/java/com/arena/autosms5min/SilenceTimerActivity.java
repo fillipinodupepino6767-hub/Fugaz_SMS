@@ -75,15 +75,12 @@ public final class SilenceTimerActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         Button back = new Button(this);
         back.setText("‹");
-        back.setTextSize(32);
-        back.setTextColor(ThemeColors.accent(dark));
-        back.setContentDescription("Volver");
-        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarBack(back, dark);
         back.setOnClickListener(v -> finish());
-        toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(52)));
+        toolbar.addView(back, new LinearLayout.LayoutParams(dp(52), dp(56)));
         TextView title = new TextView(this);
         title.setText("Temporizador de silencio");
-        title.setTextSize(22);
+        Ui.text(title, 22f);
         title.setTextColor(ThemeColors.primaryText(dark));
         toolbar.addView(title);
         root.addView(toolbar);
@@ -93,20 +90,20 @@ public final class SilenceTimerActivity extends Activity {
                 + "cuando se cumpla el tiempo. Así no se te olvida en el colegio."));
 
         modeNow = new TextView(this);
-        modeNow.setTextSize(17);
+        Ui.text(modeNow, 17f);
         modeNow.setTextColor(ThemeColors.primaryText(dark));
         modeNow.setPadding(dp(4), dp(10), dp(4), dp(2));
         root.addView(modeNow);
 
         status = new TextView(this);
-        status.setTextSize(17);
+        Ui.text(status, 17f);
         status.setTextColor(ThemeColors.accent(dark));
         status.setPadding(dp(4), dp(2), dp(4), dp(10));
         root.addView(status);
 
         TextView presetsLabel = new TextView(this);
         presetsLabel.setText("ACCESOS RÁPIDOS (MINUTOS)");
-        presetsLabel.setTextSize(13);
+        Ui.text(presetsLabel, 13f);
         presetsLabel.setTextColor(ThemeColors.accent(dark));
         presetsLabel.setPadding(dp(4), dp(6), 0, dp(5));
         root.addView(presetsLabel);
@@ -137,7 +134,7 @@ public final class SilenceTimerActivity extends Activity {
         minutesBox.setInputType(InputType.TYPE_CLASS_NUMBER);
         minutesBox.setHintTextColor(ThemeColors.secondaryText(dark));
         minutesBox.setTextColor(ThemeColors.primaryText(dark));
-        minutesBox.setTextSize(20);
+        Ui.text(minutesBox, 20f);
         minutesBox.setGravity(Gravity.CENTER);
         minutesBox.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
         minutesBox.setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -213,12 +210,10 @@ public final class SilenceTimerActivity extends Activity {
     private Button actionButton(String text) {
         Button button = new Button(this);
         button.setText(text);
-        button.setAllCaps(false);
-        button.setTextColor(ThemeColors.accent(dark));
-        button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
+        Ui.styleActionButton(button, dark);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.setMargins(0, dp(3), 0, dp(3));
+        params.setMargins(0, dp(4), 0, dp(4));
         button.setLayoutParams(params);
         return button;
     }
@@ -226,13 +221,14 @@ public final class SilenceTimerActivity extends Activity {
     private TextView noteText(String text) {
         TextView note = new TextView(this);
         note.setText(text);
-        note.setTextSize(14);
+        Ui.text(note, 15f);
         note.setTextColor(ThemeColors.secondaryText(dark));
-        note.setPadding(dp(4), 0, dp(4), dp(6));
+        note.setPadding(dp(4), 0, dp(4), dp(8));
+        note.setLineSpacing(0f, 1.15f);
         return note;
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 }

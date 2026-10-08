@@ -3,6 +3,18 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.27.0 (v27)
+
+- **Configuración automática primero:** el botón de app predeterminada va
+  separado y debajo. El automático abre directo la info de la app para
+  «Permitir ajustes restringidos» (necesario en Android 15/16 con APK),
+  luego permisos, notificaciones, alarmas y al final la app predeterminada.
+  Al volver a la app el flujo continúa solo.
+- **Interfaz que escala:** textos y botones respetan el tamaño de letra del
+  sistema y se agrandan un poco en pantallas chicas (Motorola y similares).
+- **Android 16:** `targetSdk 36`, servicio de vigilancia con tipo
+  `specialUse` exigido desde Android 14+.
+
 ## Novedades de la versión 0.26.0 (v26)
 
 - **Vigilar silencio de otras apps:** si Volume Styles, el sistema u otra

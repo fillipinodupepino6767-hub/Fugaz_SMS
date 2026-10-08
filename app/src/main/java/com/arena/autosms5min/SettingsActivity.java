@@ -58,6 +58,11 @@ public final class SettingsActivity extends Activity {
             recreate();
             return;
         }
+        // Resume the step-by-step flow after the user returns from system screens
+        // (restricted settings, notifications, exact alarms, SMS role).
+        if (SetupHelper.isAutoSetupPending(this)) {
+            SetupHelper.continueAutoSetupIfPending(this, REQUEST_SMS_ROLE);
+        }
         refreshUi();
     }
 
@@ -65,6 +70,7 @@ public final class SettingsActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         ensureSmsPermissionsIfDefault();
+        // Auto-setup resume is handled in onResume (covers role + settings screens).
         refreshUi();
     }
 
@@ -87,31 +93,31 @@ public final class SettingsActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         Button back = new Button(this);
         back.setText("‹");
-        back.setTextSize(32);
-        back.setTextColor(ThemeColors.accent(dark));
-        back.setContentDescription("Volver");
-        back.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarBack(back, dark);
         back.setOnClickListener(v -> finish());
-        toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(52)));
+        toolbar.addView(back, new LinearLayout.LayoutParams(dp(52), dp(56)));
         TextView title = new TextView(this);
         title.setText("Configuración");
-        title.setTextSize(24);
+        Ui.text(title, 24f);
         title.setTextColor(ThemeColors.primaryText(dark));
         toolbar.addView(title);
         root.addView(toolbar);
 
         status = new TextView(this);
         status.setTextColor(ThemeColors.secondaryText(dark));
+        Ui.text(status, 15f);
         status.setPadding(0, dp(6), 0, dp(10));
         root.addView(status);
 
-        setupButton = actionButton("CONFIGURAR COMO APP SMS PREDETERMINADA");
-        setupButton.setOnClickListener(v -> showDefaultSmsWarning());
-        root.addView(setupButton);
+        root.addView(noteText("Empieza siempre por la configuración automática: desbloquea los ajustes restringidos (necesario en Android 15 y 16 si instalaste el APK), pide permisos y al final la app predeterminada. El botón de app predeterminada va aparte y no interfiere con el automático."));
 
-        Button autoSetup = actionButton("CONFIGURACIÓN AUTOMÁTICA");
+        Button autoSetup = actionButton("① CONFIGURACIÓN AUTOMÁTICA");
         autoSetup.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
         root.addView(autoSetup);
+
+        setupButton = actionButton("② CONFIGURAR COMO APP SMS PREDETERMINADA");
+        setupButton.setOnClickListener(v -> showDefaultSmsWarning());
+        root.addView(setupButton);
 
         root.addView(sectionTitle("Mensajes"));
         retentionButton = actionButton("");
@@ -286,7 +292,7 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.26.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.27.0 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -296,12 +302,10 @@ public final class SettingsActivity extends Activity {
     private Button actionButton(String text) {
         Button button = new Button(this);
         button.setText(text);
-        button.setAllCaps(false);
-        button.setTextColor(ThemeColors.accent(dark));
-        button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
+        Ui.styleActionButton(button, dark);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.setMargins(0, dp(3), 0, dp(3));
+        params.setMargins(0, dp(4), 0, dp(4));
         button.setLayoutParams(params);
         return button;
     }
@@ -309,18 +313,19 @@ public final class SettingsActivity extends Activity {
     private TextView sectionTitle(String text) {
         TextView title = new TextView(this);
         title.setText(text.toUpperCase());
-        title.setTextSize(13);
+        Ui.text(title, 14f);
         title.setTextColor(ThemeColors.accent(dark));
-        title.setPadding(dp(4), dp(18), 0, dp(5));
+        title.setPadding(dp(4), dp(20), 0, dp(6));
         return title;
     }
 
     private TextView noteText(String text) {
         TextView note = new TextView(this);
         note.setText(text);
-        note.setTextSize(14);
+        Ui.text(note, 15f);
         note.setTextColor(ThemeColors.secondaryText(dark));
-        note.setPadding(dp(4), 0, dp(4), dp(6));
+        note.setPadding(dp(4), 0, dp(4), dp(8));
+        note.setLineSpacing(0f, 1.15f);
         return note;
     }
 
@@ -696,7 +701,7 @@ public final class SettingsActivity extends Activity {
                         + "• Puedes bloquear remitentes desde una conversación. Sus próximos SMS se descartan localmente sin notificación.\n\n"
                         + "• En SIM y envío puedes ver las SIM activas, el número que el operador exponga y elegir la SIM para SMS salientes.\n\n"
                         + "• Compartir envía el texto a otra app, como WhatsApp o correo; esa app puede usar Wi-Fi o datos, pero no convierte el SMS en un SMS por Wi-Fi.\n\n"
-                        + "• Si algo falla (notificaciones, borrado), usa Configuración automática: revisa rol, permisos y alarmas paso a paso.\n\n"
+                        + "• Si algo falla (notificaciones, borrado), usa Configuración automática: primero desbloquea ajustes restringidos (Android 15/16), luego permisos, notificaciones, alarmas y al final la app predeterminada. El botón de app predeterminada va aparte.\n\n"
                         + "• Esta es una app beta para SMS de texto. Google Mensajes puede seguir mostrando su historial o chats por internet.",
                 "Entendido");
     }
@@ -706,6 +711,6 @@ public final class SettingsActivity extends Activity {
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + .5f);
+        return Ui.dp(this, value);
     }
 }
