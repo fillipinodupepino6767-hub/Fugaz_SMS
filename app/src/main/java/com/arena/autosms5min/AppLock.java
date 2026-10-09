@@ -129,7 +129,7 @@ final class AppLock {
         ThemedDialog.input(activity, "Fugaz SMS bloqueada 🔒",
                 "Escribe tu PIN para abrir la app.",
                 "",
-                InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIANT_PASSWORD,
+                InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD,
                 null, "Salir", "Entrar",
                 null,
                 value -> {

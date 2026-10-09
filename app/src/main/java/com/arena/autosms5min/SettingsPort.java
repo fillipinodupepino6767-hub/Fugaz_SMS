@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 
 import org.json.JSONObject;
 
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -61,7 +62,8 @@ final class SettingsPort {
             JSONObject file = root.getJSONObject(name);
             SharedPreferences prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = prefs.edit().clear();
-            for (String key : file.keys()) {
+            for (Iterator<String> keys = file.keys(); keys.hasNext(); ) {
+                String key = keys.next();
                 if (shouldSkip(name, key)) continue;
                 JSONObject item = file.getJSONObject(key);
                 String type = item.getString("t");

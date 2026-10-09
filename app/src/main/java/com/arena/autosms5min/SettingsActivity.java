@@ -1033,7 +1033,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
     private void promptNewPin() {
         ThemedDialog.input(this, "PIN de la app",
                 "Escribe un PIN de 4 a 10 dígitos. Se pedirá cada vez que abras Fugaz SMS.",
-                "", InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIANT_PASSWORD,
+                "", InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD,
                 null, "Cancelar", "Guardar", null, value -> {
                     if (!AppLock.pinFormatOk(value)) {
                         Toast.makeText(this, "Usa de 4 a 10 dígitos.",
