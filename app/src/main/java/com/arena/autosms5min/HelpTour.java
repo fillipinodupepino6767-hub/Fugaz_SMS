@@ -8,7 +8,7 @@ import android.content.Intent;
  * bottom of the screen. When hosted by Settings, each step scrolls the screen
  * behind to the section it explains and flashes it, so the window not only
  * talks about a setting but points at it. ◀ goes back to the previous tip,
- * reopening the tour resumes on the last section shown.
+ * and reopening the tour always starts again at the first window.
  *
  * The welcome appears once per app version (first install or after an update)
  * so someone who already opened an older build sees it again when updating.
@@ -87,7 +87,9 @@ final class HelpTour {
                 + "Al activarlo creas tu PIN (de 4 a 10 dígitos). Además existe DESBLOQUEO CON "
                 + "HUELLA: una opción aparte, también APAGADA por defecto, que solo se enciende "
                 + "cuando tú la confirmas con tu huella en el teléfono. Si la dejas apagada o el "
-                + "teléfono no tiene huellas, se pide el PIN y listo.",
+                + "teléfono no tiene huellas, se pide el PIN y listo. El botón de la huella está "
+                + "siempre visible en PRIVACIDAD; si todavía no hay PIN, te ofrece crearlo "
+                + "primero.",
             "privacidad"},
         {"🆘 Ayuda y saldo",
             "La barra amarilla de la bandeja siempre dice qué falta; tócala (o REPARAR) y vas "
@@ -108,13 +110,13 @@ final class HelpTour {
                 + "restringidos» (con PIN o huella) si instalaste el APK.\n\n"
                 + "«Ver la guía» abre 8 ventanitas que señalan cada ajuste en Configuración "
                 + "(con ← para volver atrás y ✕ para cerrar). El ❓ de la barra siempre la "
-                + "vuelve a abrir en la sección donde la dejaste.";
+                + "abre desde la primera ventanita.";
 
     /** Start (or resume) the tour; each step is announced to the host. */
     static void start(final Activity activity, final Host host) {
-        int saved = AppState.helpLastStep(activity);
-        if (saved < 0 || saved >= STEPS.length) saved = 0;
-        showStep(activity, saved, host);
+        // Always from the first window: resuming on the last-shown step left
+        // people stuck at the end of the guide, forced to tap ◀ back to one.
+        showStep(activity, 0, host);
     }
 
     /** Fallback when no host is available (windows only, no redirect). */
@@ -124,7 +126,6 @@ final class HelpTour {
 
     private static void showStep(final Activity activity, final int index, final Host host) {
         if (activity == null || activity.isFinishing()) return;
-        AppState.setHelpLastStep(activity, index);
         if (host != null) host.showStepAt(STEPS[index][2], index);
         final boolean canBack = index > 0;
         final boolean last = index >= STEPS.length - 1;
@@ -138,12 +139,7 @@ final class HelpTour {
                         showStep(activity, index - 1, host);
                     }
                 } : null,
-                last ? new Runnable() {
-                    @Override
-                    public void run() {
-                        AppState.setHelpLastStep(activity, 0); // finished: restart next time
-                    }
-                } : new Runnable() {
+                last ? null : new Runnable() {
                     @Override
                     public void run() {
                         showStep(activity, index + 1, host);

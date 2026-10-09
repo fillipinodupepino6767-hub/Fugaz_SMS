@@ -585,9 +585,13 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                             ? "SÍ (PIN ACTIVO)" : "NO (PIN GUARDADO)"))
                     : "BLOQUEO AL ABRIR: SIN PIN (TOCA PARA CREAR)");
             changePinButton.setVisibility(AppLock.isSet(this) ? View.VISIBLE : View.GONE);
-            bioButton.setVisibility(AppLock.isSet(this) ? View.VISIBLE : View.GONE);
+            // Always visible so the fingerprint option is discoverable even
+            // before a PIN exists; the label then says a PIN comes first.
+            bioButton.setVisibility(View.VISIBLE);
             bioButton.setText("DESBLOQUEO CON HUELLA: "
-                    + (AppLock.bioEnabled(this) ? "SÍ (ACTIVA)" : "NO (APAGADA)"));
+                    + (AppLock.bioEnabled(this) ? "SÍ (ACTIVA)"
+                            : AppLock.isSet(this) ? "NO (APAGADA)"
+                            : "NO (PRIMERO CREA TU PIN)"));
         }
         boolean isDefault = isDefaultSmsApp();
         boolean smsPerms = SetupHelper.hasSmsPermissions(this);
@@ -1001,6 +1005,15 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
      * on after the user confirms with their own finger. Cancelling keeps it off.
      */
     private void toggleBio() {
+        if (!AppLock.isSet(this)) {
+            ThemedDialog.confirm(this, "La huella necesita tu PIN",
+                    "La huella es una forma ALTERNATIVA de desbloquear la app: reemplaza al "
+                            + "PIN al abrir la bandeja. Por eso primero hay que crear el PIN "
+                            + "con BLOQUEO AL ABRIR.\n\nSi lo creas ahora podrás activar la "
+                            + "huella en seguida, confirmándola con tu propio dedo.",
+                    "Ahora no", "CREAR PIN AHORA", null, this::promptNewPin);
+            return;
+        }
         if (AppLock.bioEnabled(this)) {
             AppLock.setBio(this, false);
             Toast.makeText(this, "Desbloqueo con huella desactivado.",

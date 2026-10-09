@@ -3,6 +3,21 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.27.7 (v27.7)
+
+- **Arreglo: «← Atrás» de la guía ya retrocede.** El botón solo cerraba la
+  ventanita sin llamar al paso anterior; ahora vuelve de verdad a la
+  ventanita previa (con su sección resaltada detrás).
+- **La guía ❓ abre siempre desde la primera ventanita.** Ya no reanuda en la
+  sección donde la dejaste: al cerrar en la última quedaba atascada ahí y
+  había que retroceder una por una hasta la primera.
+- **La huella ahora se encuentra aunque aún no haya PIN:** el botón
+  DESBLOQUEO CON HUELLA está siempre visible en Privacidad; sin PIN creado
+  dice «NO (PRIMERO CREA TU PIN)» y al tocarlo explica que la huella es una
+  forma alternativa de desbloqueo y ofrece crear el PIN en el momento.
+  Sigue siendo opcional y apagada por defecto; el PIN continúa siendo el
+  respaldo.
+
 ## Novedades de la versión 0.27.6 (v27.6)
 
 - **Desbloqueo con huella (opcional):** en Privacidad aparece el botón

@@ -82,7 +82,10 @@ final class ThemedDialog {
         LinearLayout buttons = buttonRow(activity);
         if (canGoBack) {
             Button back = textButton(activity, "\u2190 Atr\u00e1s", false);
-            back.setOnClickListener(v -> dialog.dismiss());
+            back.setOnClickListener(v -> {
+                dialog.dismiss();
+                if (onBack != null) onBack.run();
+            });
             buttons.addView(back);
         }
         Button close = textButton(activity, "\u2715", false);
