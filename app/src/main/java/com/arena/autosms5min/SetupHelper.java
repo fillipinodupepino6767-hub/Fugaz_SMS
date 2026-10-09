@@ -31,6 +31,10 @@ final class SetupHelper {
     private static final String KEY_PENDING = "auto_setup_pending";
     private static final String KEY_RESTRICTED_DONE = "restricted_step_done";
     private static final String KEY_RESTRICTED_AT = "restricted_opened_at";
+    private static final String KEY_SETUP_STARTED_AT = "setup_started_at";
+    private static final String KEY_SETUP_REMINDED = "setup_reminded";
+    private static final String KEY_SETUP_CELEBRATED = "setup_celebrated";
+    private static final long REMIND_AFTER_MS = 3L * 24L * 60L * 60L * 1000L;
     private static long lastContinueAt;
 
     private SetupHelper() { }
@@ -363,10 +367,68 @@ final class SetupHelper {
         }
 
         clearAutoSetupPending(activity);
-        ThemedDialog.message(activity, "Todo listo",
+        celebrate(activity);
+    }
+
+    /** One-time celebration when everything is configured (setup flow or later). */
+    static void celebrate(final Activity activity) {
+        setupPrefs(activity).edit()
+                .putBoolean(KEY_SETUP_CELEBRATED, true)
+                .putBoolean(KEY_SETUP_REMINDED, true)
+                .apply();
+        ThemedDialog.confirm(activity, "\uD83C\uDF89 Todo listo",
                 "Ajustes restringidos, permisos, notificaciones, alarmas y app predeterminada "
-                        + "están configurados correctamente.",
-                "Entendido");
+                        + "est\u00e1n configurados correctamente.\n\n\u00bfQuieres comprobar "
+                        + "que el aviso de sonido suena?",
+                "Cerrar", "Probar sonido",
+                () -> NotificationHelper.showTest(activity));
+    }
+
+    /**
+     * Quiet one-time nudge shown 3 days after the first open while setup is
+     * still incomplete. Never stacks on other dialogs; skipped forever once
+     * everything is configured.
+     */
+    static void maybeRemindSetup(Activity activity, int roleRequestCode) {
+        SharedPreferences prefs = setupPrefs(activity);
+        if (prefs.getBoolean(KEY_SETUP_REMINDED, false)) return;
+        if (bannerText(activity) == null) {
+            prefs.edit().putBoolean(KEY_SETUP_REMINDED, true).apply();
+            return;
+        }
+        long started = prefs.getLong(KEY_SETUP_STARTED_AT, 0L);
+        long now = System.currentTimeMillis();
+        if (started == 0L) {
+            prefs.edit().putLong(KEY_SETUP_STARTED_AT, now).apply();
+            return;
+        }
+        if (now - started < REMIND_AFTER_MS) return;
+        if (ThemedDialog.activeCount() > 0) return; // try again at a quiet moment
+        prefs.edit().putBoolean(KEY_SETUP_REMINDED, true).apply();
+        String falta = bannerText(activity);
+        ThemedDialog.confirm(activity, "\uD83D\uDC4B \u00a1Sigues sin configurar!",
+                "Pasaron 3 d\u00edas desde tu primera vez en Fugaz SMS y a\u00fan falta:\n\n\u2022 "
+                        + falta + "\n\nToca \u00abConfigurar ahora\u00bb e inicia con ① "
+                        + "(autom\u00e1tico); la app predeterminada es ②.",
+                "Despu\u00e9s", "Configurar ahora",
+                () -> runAutoSetup(activity, roleRequestCode));
+    }
+
+    /** One-time \uD83C\uDF89 when setup is complete but never celebrated yet. */
+    static void maybeCelebrate(Activity activity) {
+        SharedPreferences prefs = setupPrefs(activity);
+        if (prefs.getBoolean(KEY_SETUP_CELEBRATED, false)) return;
+        if (bannerText(activity) != null) return;
+        if (ThemedDialog.activeCount() > 0) return; // no stacking with welcome/tour
+        celebrate(activity);
+    }
+
+    /** First open timestamp used by the 3-day reminder. */
+    static void noteFirstOpen(Context context) {
+        SharedPreferences prefs = setupPrefs(context);
+        if (!prefs.contains(KEY_SETUP_STARTED_AT)) {
+            prefs.edit().putLong(KEY_SETUP_STARTED_AT, System.currentTimeMillis()).apply();
+        }
     }
 
     private static SharedPreferences setupPrefs(Context context) {

@@ -3,6 +3,21 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.27.2 (v27.2)
+
+- **Ayuda que señala:** el ❓ ya no solo informa: cada ventana de la guía
+  **lleva la pantalla a la sección de Configuración que describe y la resalta**,
+  con **← Atrás / Siguiente →** para moverse entre mensajes; al reabrirla
+  continúa donde la dejaste. Desde la bandeja, ❓ abre Configuración con la guía.
+- **Barra amarilla clicable:** tocar la barra (o REPARAR) va directo al paso
+  que falta.
+- **Sugerencia en la bandeja vacía:** «puedes configurar el sonido al
+  desactivarlo, o configurarlo manualmente» (abre el temporizador).
+- **Recordatorio a los 3 días** si la configuración sigue incompleta (una vez,
+  con «Configurar ahora»).
+- **🎉 Todo listo** al completar la configuración (una vez, con opción de
+  probar el sonido) y **mensajes de Configuración ocultables** (💬 toggle).
+
 ## Novedades de la versión 0.27.1 (v27.1)
 
 - **Ayuda integrada:** icono ❓ en la bandeja y en Configuración abre una

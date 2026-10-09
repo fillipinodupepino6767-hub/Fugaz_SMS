@@ -22,6 +22,8 @@ final class AppState {
     private static final String KEY_WATCH_RINGER = "watch_ringer";
     private static final String KEY_WATCH_MINUTES = "watch_default_minutes";
     private static final String KEY_HELP_SHOWN_VERSION = "help_shown_version";
+    private static final String KEY_HELP_LAST_STEP = "help_last_step";
+    private static final String KEY_NOTES_VISIBLE = "settings_notes_visible";
     /** Appearance modes. */
     static final int THEME_LIGHT = 0;
     static final int THEME_DARK = 1;
@@ -232,6 +234,24 @@ final class AppState {
 
     static void setShownHelpVersion(Context context, int versionCode) {
         prefs(context).edit().putInt(KEY_HELP_SHOWN_VERSION, versionCode).apply();
+    }
+
+    /** Last help-tour step shown, so reopening ❓ resumes on the same section. */
+    static int helpLastStep(Context context) {
+        return prefs(context).getInt(KEY_HELP_LAST_STEP, 0);
+    }
+
+    static void setHelpLastStep(Context context, int step) {
+        prefs(context).edit().putInt(KEY_HELP_LAST_STEP, step).apply();
+    }
+
+    /** Long explanatory notes in Settings can be hidden for people they bother. */
+    static boolean notesVisible(Context context) {
+        return prefs(context).getBoolean(KEY_NOTES_VISIBLE, true);
+    }
+
+    static void setNotesVisible(Context context, boolean visible) {
+        prefs(context).edit().putBoolean(KEY_NOTES_VISIBLE, visible).apply();
     }
 
     /** Installed version code, used to re-show the welcome once after an update. */

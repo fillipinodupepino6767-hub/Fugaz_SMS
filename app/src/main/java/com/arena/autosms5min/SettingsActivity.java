@@ -16,10 +16,14 @@ import android.widget.Toast;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Holds all controls and guidance so the inbox can stay intentionally calm. */
-public final class SettingsActivity extends Activity {
+public final class SettingsActivity extends Activity implements HelpTour.Host {
+    /** Extra: start the contextual help tour right after opening. */
+    public static final String EXTRA_START_HELP = "start_help";
     private static final int REQUEST_SMS_ROLE = 400;
     private static final String GOOGLE_MESSAGES_PKG = "com.google.android.apps.messaging";
     private boolean dark;
@@ -41,6 +45,19 @@ public final class SettingsActivity extends Activity {
     private Button themeButton;
     private Button watchButton;
     private Button watchTimeButton;
+    private ScrollView scroll;
+    private final Map<String, View> helpAnchors = new HashMap<>();
+    private final List<TextView> notes = new ArrayList<>();
+    private boolean helpPending;
+    private View lastFlashed;
+    private final Runnable flashReset = new Runnable() {
+        @Override
+        public void run() {
+            if (lastFlashed != null) {
+                lastFlashed.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -49,6 +66,17 @@ public final class SettingsActivity extends Activity {
         ThemeColors.applySystemBars(this, dark);
         buildUi();
         ensureSmsPermissionsIfDefault();
+        if (getIntent().getBooleanExtra(EXTRA_START_HELP, false)) {
+            getIntent().putExtra(EXTRA_START_HELP, false);
+            helpPending = true; // hold celebration/reminder until the tour starts
+            scroll.post(new Runnable() {
+                @Override
+                public void run() {
+                    helpPending = false;
+                    HelpTour.start(SettingsActivity.this, SettingsActivity.this);
+                }
+            });
+        }
     }
 
     @Override
@@ -81,7 +109,7 @@ public final class SettingsActivity extends Activity {
     }
 
     private void buildUi() {
-        ScrollView scroll = new ScrollView(this);
+        scroll = new ScrollView(this);
         scroll.setBackgroundColor(ThemeColors.background(dark));
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -108,7 +136,7 @@ public final class SettingsActivity extends Activity {
         help.setTextColor(ThemeColors.accent(dark));
         help.setContentDescription("Ayuda");
         help.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        help.setOnClickListener(v -> HelpTour.start(this));
+        help.setOnClickListener(v -> HelpTour.start(this, this));
         toolbar.addView(help, new LinearLayout.LayoutParams(dp(52), dp(56)));
         root.addView(toolbar);
 
@@ -119,17 +147,36 @@ public final class SettingsActivity extends Activity {
         status.setPadding(0, dp(6), 0, dp(10));
         root.addView(status);
 
+        final Button notesToggle = new Button(this);
+        notesToggle.setAllCaps(false);
+        Ui.text(notesToggle, 14f);
+        notesToggle.setTextColor(ThemeColors.accent(dark));
+        notesToggle.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        notesToggle.setGravity(Gravity.END);
+        notesToggle.setMinHeight(dp(40));
+        applyNotesVisibility(notesToggle);
+        notesToggle.setOnClickListener(v -> {
+            boolean visible = !AppState.notesVisible(this);
+            AppState.setNotesVisible(this, visible);
+            applyNotesVisibility(notesToggle);
+        });
+        root.addView(notesToggle, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
         root.addView(noteText("Toca ① primero y sigue los 5 pasos; la app predeterminada es el paso ②. Toca ❓ arriba para las explicaciones."));
 
         Button autoSetup = actionButton("① CONFIGURACIÓN AUTOMÁTICA");
         autoSetup.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
+        helpAnchors.put("setup", autoSetup);
         root.addView(autoSetup);
 
         setupButton = actionButton("② CONFIGURAR COMO APP SMS PREDETERMINADA");
         setupButton.setOnClickListener(v -> showDefaultSmsWarning());
         root.addView(setupButton);
 
-        root.addView(sectionTitle("Mensajes"));
+                TextView anchor_mensajes = sectionTitle("Mensajes");
+        helpAnchors.put("mensajes", anchor_mensajes);
+        root.addView(anchor_mensajes);
         retentionButton = actionButton("");
         retentionButton.setOnClickListener(v -> showRetentionPicker());
         root.addView(retentionButton);
@@ -162,7 +209,9 @@ public final class SettingsActivity extends Activity {
         keywords.setOnClickListener(v -> showKeywordManager());
         root.addView(keywords);
 
-        root.addView(sectionTitle("Auto-eliminación por tipo"));
+                TextView anchor_tipos = sectionTitle("Auto-eliminación por tipo");
+        helpAnchors.put("tipos", anchor_tipos);
+        root.addView(anchor_tipos);
         TextView typeNote = noteText("Los importantes no se borran solos: así se protegen códigos y bancos.");
         root.addView(typeNote);
         normalDeleteButton = actionButton("");
@@ -187,7 +236,9 @@ public final class SettingsActivity extends Activity {
         });
         root.addView(importantDeleteButton);
 
-        root.addView(sectionTitle("Deslizar en bandeja"));
+                TextView anchor_deslizar = sectionTitle("Deslizar en bandeja");
+        helpAnchors.put("deslizar", anchor_deslizar);
+        root.addView(anchor_deslizar);
         root.addView(noteText("Como en Gmail. Mantén presionado un mensaje para ver sus opciones."));
         swipeRightButton = actionButton("");
         swipeRightButton.setOnClickListener(v -> showSwipePicker(true));
@@ -196,7 +247,9 @@ public final class SettingsActivity extends Activity {
         swipeLeftButton.setOnClickListener(v -> showSwipePicker(false));
         root.addView(swipeLeftButton);
 
-        root.addView(sectionTitle("Permisos y sistema"));
+                TextView anchor_permisos = sectionTitle("Permisos y sistema");
+        helpAnchors.put("permisos", anchor_permisos);
+        root.addView(anchor_permisos);
         notifButton = actionButton("");
         notifButton.setOnClickListener(v -> {
             if (Build.VERSION.SDK_INT >= 33 && !SetupHelper.hasNotificationPermission(this)) {
@@ -235,13 +288,17 @@ public final class SettingsActivity extends Activity {
         });
         root.addView(testSound);
 
-        root.addView(sectionTitle("Google Mensajes y RCS"));
+                TextView anchor_google = sectionTitle("Google Mensajes y RCS");
+        helpAnchors.put("google", anchor_google);
+        root.addView(anchor_google);
         root.addView(noteText("Solo SMS por señal del celular: los chats por internet (Wi-Fi o datos) no llegan aquí."));
         Button openGm = actionButton("ABRIR GOOGLE MENSAJES (PASAR A SOLO SMS)");
         openGm.setOnClickListener(v -> showGoogleMessagesGuide());
         root.addView(openGm);
 
-        root.addView(sectionTitle("Sonido"));
+                TextView anchor_sonido = sectionTitle("Sonido");
+        helpAnchors.put("sonido", anchor_sonido);
+        root.addView(anchor_sonido);
         root.addView(noteText("Silencia ahora y el sonido vuelve solo cuando se cumpla el tiempo."));
         Button silenceTimer = actionButton("TEMPORIZADOR DE SILENCIO");
         silenceTimer.setOnClickListener(v -> {
@@ -268,7 +325,9 @@ public final class SettingsActivity extends Activity {
         watchTimeButton.setOnClickListener(v -> showWatchTimePicker());
         root.addView(watchTimeButton);
 
-        root.addView(sectionTitle("Saldo"));
+                TextView anchor_saldo = sectionTitle("Saldo");
+        helpAnchors.put("saldo", anchor_saldo);
+        root.addView(anchor_saldo);
         root.addView(noteText("Canales oficiales: Kolbi *888# · Movistar/Liberty SMS 606 · Claro *611#."));
         Button balance = actionButton("SALDO DE MIS LÍNEAS");
         balance.setOnClickListener(v -> {
@@ -285,9 +344,11 @@ public final class SettingsActivity extends Activity {
         themeButton.setOnClickListener(v -> showThemePicker());
         root.addView(themeButton);
 
-        root.addView(sectionTitle("Ayuda"));
+                TextView anchor_ayuda = sectionTitle("Ayuda");
+        helpAnchors.put("ayuda", anchor_ayuda);
+        root.addView(anchor_ayuda);
         Button quickGuide = actionButton("GUÍA RÁPIDA (VENTANAS CON ✕)");
-        quickGuide.setOnClickListener(v -> HelpTour.start(this));
+        quickGuide.setOnClickListener(v -> HelpTour.start(this, this));
         root.addView(quickGuide);
 
         Button welcomeAgain = actionButton("MENSAJE DE BIENVENIDA");
@@ -304,11 +365,48 @@ public final class SettingsActivity extends Activity {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.27.1 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.27.2 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
         setContentView(scroll);
+        applyNotesVisibility(notesToggle);
+    }
+
+    /** Contextual help: scroll the list to the section and flash it. */
+    @Override
+    public void showStepAt(String anchorKey, int index) {
+        final View anchor = helpAnchors.get(anchorKey);
+        if (anchor == null || scroll == null) return;
+        scroll.post(new Runnable() {
+            @Override
+            public void run() {
+                scroll.smoothScrollTo(0, Math.max(0, anchor.getTop() - dp(14)));
+                flashAnchor(anchor);
+            }
+        });
+    }
+
+    private void flashAnchor(View anchor) {
+        anchor.removeCallbacks(flashReset);
+        if (lastFlashed != null && lastFlashed != anchor) {
+            lastFlashed.removeCallbacks(flashReset);
+            lastFlashed.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        }
+        lastFlashed = anchor;
+        anchor.setBackground(ThemeColors.rounded(this, ThemeColors.sentBubble(dark), 8));
+        anchor.postDelayed(flashReset, 1600L);
+    }
+
+    private void applyNotesVisibility(Button toggle) {
+        boolean visible = AppState.notesVisible(this);
+        for (TextView note : notes) {
+            note.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+        if (toggle != null) {
+            toggle.setText(visible ? "💬 Mensajes de ayuda ▾ (ocultar)"
+                    : "💬 Mensajes de ayuda ▸ (mostrar)");
+        }
     }
 
     private Button actionButton(String text) {
@@ -338,10 +436,12 @@ public final class SettingsActivity extends Activity {
         note.setTextColor(ThemeColors.secondaryText(dark));
         note.setPadding(dp(4), 0, dp(4), dp(8));
         note.setLineSpacing(0f, 1.15f);
+        notes.add(note);
         return note;
     }
 
     private void refreshUi() {
+        maybeNudge();
         boolean isDefault = isDefaultSmsApp();
         boolean smsPerms = SetupHelper.hasSmsPermissions(this);
         boolean notifOn = SetupHelper.notificationsEnabled(this);
@@ -734,6 +834,12 @@ public final class SettingsActivity extends Activity {
 
     private boolean isDefaultSmsApp() {
         return SetupHelper.isDefaultSms(this);
+    }
+
+    private void maybeNudge() {
+        if (helpPending) return; // don't stack on the guided tour
+        SetupHelper.maybeRemindSetup(this, REQUEST_SMS_ROLE);
+        SetupHelper.maybeCelebrate(this);
     }
 
     private int dp(int value) {

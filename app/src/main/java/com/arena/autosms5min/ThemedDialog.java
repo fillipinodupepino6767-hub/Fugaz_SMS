@@ -7,6 +7,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -64,13 +65,43 @@ final class ThemedDialog {
         finish(activity, dialog, card);
     }
 
+    /** Windows currently on screen (helpers use it to avoid stacking dialogs). */
+    private static int activeCount;
+    static int activeCount() { return activeCount; }
+
     /**
-     * One floating window of the guided help tour: a ✕ closes the tour and a
-     * strong button shows the next tip (or finishes it).
+     * One floating window of the guided help tour, pinned to the bottom so the
+     * settings section behind stays visible. ◀ goes to the previous tip, ✕
+     * closes the tour and the strong button shows the next tip (or finishes).
      */
     static void tourStep(Activity activity, String title, String message,
-                         String nextLabel, Runnable onNext, Runnable onClose) {
-        confirm(activity, title, message, "✕ Cerrar", nextLabel, onClose, onNext);
+                         boolean canGoBack, String nextLabel,
+                         Runnable onBack, Runnable onNext, Runnable onClose) {
+        Dialog dialog = new Dialog(activity);
+        LinearLayout card = card(activity, dialog, title, message);
+        LinearLayout buttons = buttonRow(activity);
+        if (canGoBack) {
+            Button back = textButton(activity, "\u2190 Atr\u00e1s", false);
+            back.setOnClickListener(v -> {
+                dialog.dismiss();
+                if (onBack != null) onBack.run();
+            });
+            buttons.addView(back);
+        }
+        Button close = textButton(activity, "\u2715", false);
+        close.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onClose != null) onClose.run();
+        });
+        buttons.addView(close);
+        Button next = textButton(activity, nextLabel, true);
+        next.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onNext != null) onNext.run();
+        });
+        buttons.addView(next);
+        card.addView(buttons);
+        finish(activity, dialog, card, true);
     }
 
     /** Scrollable single-choice sheet in the style of the history retention picker. */
@@ -247,16 +278,31 @@ final class ThemedDialog {
     }
 
     private static void finish(Activity activity, Dialog dialog, LinearLayout card) {
+        finish(activity, dialog, card, false);
+    }
+
+    private static void finish(Activity activity, Dialog dialog, LinearLayout card,
+                               boolean pinToBottom) {
         ScrollView scroll = new ScrollView(activity);
         scroll.setBackgroundColor(Color.TRANSPARENT);
         scroll.addView(card);
         dialog.setContentView(scroll);
+        activeCount++;
+        dialog.setOnDismissListener(d -> activeCount--);
         dialog.show();
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(
+            Window window = dialog.getWindow();
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setLayout(
                     activity.getResources().getDisplayMetrics().widthPixels - dp(activity, 36),
                     LinearLayout.LayoutParams.WRAP_CONTENT);
+            if (pinToBottom) {
+                WindowManager.LayoutParams attrs = window.getAttributes();
+                attrs.gravity = Gravity.BOTTOM;
+                attrs.y = dp(activity, 14);
+                window.setAttributes(attrs);
+                window.setDimAmount(0.2f);
+            }
         }
     }
 

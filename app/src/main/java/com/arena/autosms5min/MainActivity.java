@@ -61,6 +61,7 @@ public final class MainActivity extends Activity {
         ThemeColors.applySystemBars(this, dark);
         buildUi();
         NotificationHelper.ensureChannels(this);
+        SetupHelper.noteFirstOpen(this);
         // One-time welcome (first install or after an update) comes before system
         // dialogs; permissions are requested as soon as the user picks an option.
         boolean welcomeShown = HelpTour.showWelcomeIfNeeded(this,
@@ -88,6 +89,9 @@ public final class MainActivity extends Activity {
             SetupHelper.continueAutoSetupIfPending(this, REQUEST_SMS_ROLE);
         }
         refresh();
+        // Quiet one-time nudges (never stack on welcome/tour dialogs).
+        SetupHelper.maybeRemindSetup(this, REQUEST_SMS_ROLE);
+        SetupHelper.maybeCelebrate(this);
         refreshHandler.removeCallbacks(refreshTicker);
         refreshHandler.postDelayed(refreshTicker, 1_000L);
     }
@@ -140,7 +144,8 @@ public final class MainActivity extends Activity {
         help.setContentDescription("Ayuda");
         help.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         help.setMinWidth(dp(52));
-        help.setOnClickListener(v -> HelpTour.start(this));
+        help.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)
+                .putExtra(SettingsActivity.EXTRA_START_HELP, true)));
         toolbar.addView(help, new LinearLayout.LayoutParams(dp(52), dp(52)));
 
         LinearLayout titles = new LinearLayout(this);
@@ -199,6 +204,8 @@ public final class MainActivity extends Activity {
         repair.setMinHeight(dp(48));
         repair.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
         warningBanner.addView(repair);
+        // Idea: the whole bar goes straight to the pending step.
+        warningBanner.setOnClickListener(v -> SetupHelper.runAutoSetup(this, REQUEST_SMS_ROLE));
         root.addView(warningBanner);
 
         LinearLayout searchRow = new LinearLayout(this);
@@ -276,6 +283,24 @@ public final class MainActivity extends Activity {
         Ui.text(emptyBody, 16f);
         emptyBody.setGravity(Gravity.CENTER);
         emptyState.addView(emptyBody);
+
+        TextView suggestion = new TextView(this);
+        suggestion.setText("💡 Sugerencia: puedes configurar el sonido al desactivarlo\n"
+                + "(⏱ temporizador de silencio), o puedes configurarlo manualmente.\n"
+                + "Toca aquí ▸");
+        suggestion.setTextColor(ThemeColors.accent(dark));
+        Ui.text(suggestion, 14f);
+        suggestion.setGravity(Gravity.CENTER);
+        suggestion.setPadding(dp(10), dp(16), dp(10), dp(4));
+        suggestion.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(this, SilenceTimerActivity.class));
+            } catch (Exception ignored) {
+                Toast.makeText(this, "No se pudo abrir el temporizador.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        emptyState.addView(suggestion);
         root.addView(emptyState, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
