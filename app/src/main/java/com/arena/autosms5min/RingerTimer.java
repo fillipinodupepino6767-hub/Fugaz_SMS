@@ -19,6 +19,7 @@ final class RingerTimer {
     private static final String KEY_RESTORE_AT = "restore_at";
     private static final String KEY_SELF_AT = "self_change_at";
     private static final String KEY_LAST_MODE = "last_seen_mode";
+    private static final String KEY_LAST_ZEN = "last_seen_zen";
     private static final int REQUEST_CODE = 61024;
     static final long MIN_MINUTES = 1L;
     static final long MAX_MINUTES = 720L; // 12 hours
@@ -27,10 +28,18 @@ final class RingerTimer {
 
     /** Silences now (vibrate or full silent) and restores the sound after the minutes. */
     static long arm(Context context, long minutes, boolean vibrate) {
+        return arm(context, minutes, vibrate, true);
+    }
+
+    /**
+     * @param changeRinger false when only Do Not Disturb silenced the phone:
+     *                     schedule the restore without forcing the ringer.
+     */
+    static long arm(Context context, long minutes, boolean vibrate, boolean changeRinger) {
         long safeMinutes = Math.max(MIN_MINUTES, Math.min(MAX_MINUTES, minutes));
         long restoreAt = System.currentTimeMillis() + safeMinutes * 60_000L;
         AudioManager audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        if (audio != null) {
+        if (changeRinger && audio != null) {
             try {
                 audio.setRingerMode(vibrate ? AudioManager.RINGER_MODE_VIBRATE
                         : AudioManager.RINGER_MODE_SILENT);
@@ -42,6 +51,24 @@ final class RingerTimer {
         noteSelfChange(context);
         schedule(context, restoreAt);
         return restoreAt;
+    }
+
+    /** Current Do Not Disturb (zen) value: 0 = off, >0 = on. Read needs no permission. */
+    static int currentZen(Context context) {
+        try {
+            return android.provider.Settings.Global.getInt(
+                    context.getContentResolver(), "zen_mode");
+        } catch (Exception ignored) {
+            return 0; // Missing or OEM-restricted: treat as off.
+        }
+    }
+
+    static int lastSeenZen(Context context) {
+        return prefs(context).getInt(KEY_LAST_ZEN, 0);
+    }
+
+    static void setLastSeenZen(Context context, int zen) {
+        prefs(context).edit().putInt(KEY_LAST_ZEN, zen).apply();
     }
 
     /** Stops the timer. The phone stays as it is; the user un-silences manually. */

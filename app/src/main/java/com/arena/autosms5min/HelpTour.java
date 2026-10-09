@@ -73,9 +73,9 @@ final class HelpTour {
                 + "⏱ TEMPORIZADOR DE SILENCIO (sección Sonido): silencia o vibra AHORA (útil en "
                 + "el colegio) y el sonido vuelve solo al terminar el tiempo. También puedes "
                 + "configurar el sonido al desactivarlo, o configurarlo manualmente.\n\n"
-                + "👁 VIGILAR SILENCIO: si otra app o el sistema ponen el teléfono en silencio "
-                + "o vibración, te llega un aviso para activar el temporizador de un toque. "
-                + "No detecta «No molestar» puro.",
+                + "👁 VIGILAR SILENCIO: si otra app, el sistema o No Molestar 🤫 silencian "
+                + "el teléfono, te llega un aviso para activar el temporizador de un toque, "
+                + "sin abrir la app.",
             "sonido"},
         {"🆘 Ayuda y saldo",
             "La barra amarilla de la bandeja siempre dice qué falta; tócala (o REPARAR) y vas "

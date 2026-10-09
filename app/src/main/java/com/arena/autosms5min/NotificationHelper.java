@@ -15,6 +15,8 @@ final class NotificationHelper {
     private static final String CHANNEL_ID = "incoming_sms";
     private static final String DELETION_CHANNEL_ID = "deleted_sms";
     private static final String WATCH_CHANNEL_ID = "ringer_watch_min";
+    /** Heads-up channel for the arm-the-timer prompts (ringer and No Molestar). */
+    private static final String WATCH_PROMPT_CHANNEL_ID = "ringer_watch_prompt";
     private static final int TEST_NOTIFICATION_ID = 987654;
     private static final int WATCH_PROMPT_ID = 610027;
     private static final int WATCH_ARMED_ID = 610028;
@@ -160,14 +162,28 @@ final class NotificationHelper {
      * One tap arms the timer with the pre-configured default time.
      */
     static void showRingerWatchPrompt(Context context, boolean vibrate) {
-        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (manager == null) return;
-        createChannels(manager);
         String label = AppState.watchMinutesLabel(context);
         String title = vibrate ? "Se detectó vibración 📳" : "Se detectó silencio 🔇";
         String message = (vibrate ? "El teléfono pasó a vibración" : "El teléfono pasó a silencio")
                 + " (otra app o el sistema). ¿Activo el temporizador de " + label
                 + " para que el sonido vuelva solo?";
+        postWatchPrompt(context, title, message);
+    }
+
+    /** Prompt when Do Not Disturb turns on (the ringer broadcast never fires for it). */
+    static void showDndWatchPrompt(Context context) {
+        String label = AppState.watchMinutesLabel(context);
+        String title = "Se activó No Molestar 🤫";
+        String message = "Android entró en No Molestar. ¿Activo el temporizador de " + label
+                + " para que al terminar vuelva el sonido?";
+        postWatchPrompt(context, title, message);
+    }
+
+    private static void postWatchPrompt(Context context, String title, String message) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        createChannels(manager);
+        String label = AppState.watchMinutesLabel(context);
         Intent open = new Intent(context, SilenceTimerActivity.class);
         PendingIntent openIntent = PendingIntent.getActivity(context, WATCH_OPEN_CODE, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -176,7 +192,7 @@ final class NotificationHelper {
         PendingIntent armIntent = PendingIntent.getBroadcast(context, WATCH_ARM_CODE, arm,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new Notification.Builder(context, CHANNEL_ID)
+                ? new Notification.Builder(context, WATCH_PROMPT_CHANNEL_ID)
                 : new Notification.Builder(context);
         builder.setSmallIcon(android.R.drawable.sym_action_chat)
                 .setContentTitle(title)
@@ -210,7 +226,7 @@ final class NotificationHelper {
         PendingIntent openIntent = PendingIntent.getActivity(context, WATCH_OPEN_CODE, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new Notification.Builder(context, CHANNEL_ID)
+                ? new Notification.Builder(context, WATCH_PROMPT_CHANNEL_ID)
                 : new Notification.Builder(context);
         builder.setSmallIcon(android.R.drawable.sym_action_chat)
                 .setContentTitle("Temporizador activado ⏳")
@@ -263,6 +279,12 @@ final class NotificationHelper {
                     "Vigilancia de sonido", NotificationManager.IMPORTANCE_MIN);
             watch.setDescription("Aviso permanente mientras se vigila el modo de sonido");
             manager.createNotificationChannel(watch);
+            NotificationChannel prompt = new NotificationChannel(WATCH_PROMPT_CHANNEL_ID,
+                    "Avisos de vigilancia de sonido", NotificationManager.IMPORTANCE_HIGH);
+            prompt.setDescription("Aviso con un toque al pasar a silencio, vibración o No Molestar");
+            // Honored only while the user granted Do Not Disturb access; harmless otherwise.
+            prompt.setBypassDnd(true);
+            manager.createNotificationChannel(prompt);
         }
     }
 

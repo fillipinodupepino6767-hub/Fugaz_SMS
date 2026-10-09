@@ -310,7 +310,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         });
         root.addView(silenceTimer);
 
-        root.addView(noteText("Si otra app o el sistema silencian el teléfono, te avisamos para activar el temporizador de un toque. No detecta «No molestar» puro."));
+        root.addView(noteText("Si otra app, el sistema o No Molestar silencian el teléfono, te avisamos para activar el temporizador de un toque."));
         watchButton = actionButton("");
         watchButton.setOnClickListener(v -> {
             boolean enabled = !AppState.watchRinger(this);
@@ -365,7 +365,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.27.2 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.27.3 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -816,7 +816,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                         + "• En Mis palabras clave puedes añadir tus propias palabras de spam o importantes; las tuyas mandan sobre las listas internas.\n\n"
                         + "• Al bloquear un número puedes borrar también sus mensajes existentes de una vez; si una conversación queda vacía, se cierra sola.\n\n"
                         + "• El temporizador de silencio vibra o silencia el teléfono ahora y restaura el sonido solo después de los minutos que escribas. Si usas No molestar, dale el permiso extra que pide la pantalla.\n\n"
-                        + "• Si activas Vigilar silencio de otras apps, cuando Volume Styles o el sistema ponga el teléfono en silencio o vibración te llega una notificación: de un toque activas el temporizador con tu tiempo automático, sin abrir la app. No detecta No molestar puro.\n\n"
+                        + "• Si activas Vigilar silencio de otras apps, cuando Volume Styles, el sistema o No Molestar pongan el teléfono en silencio o vibración te llega una notificación: de un toque activas el temporizador con tu tiempo automático, sin abrir la app.\n\n"
                         + "• En Saldo de mis líneas consultas el saldo por línea: Kolbi marca *888# desde el marcador o pide el saldo por SMS al 8888, Liberty/Movistar lo pide por SMS al 606, y siempre puedes abrir el menú de la SIM de tu operador.\n\n"
                         + "• Desliza un mensaje en la bandeja para eliminarlo o archivarlo, como en Gmail. Cada lado se configura por separado.\n\n"
                         + "• Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo. Los archivados no se borran solos.\n\n"

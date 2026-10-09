@@ -3,6 +3,23 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.27.3 (v27.3)
+
+- **Arreglo: vigilancia de silencio reparada** tras actualizar (Android mata
+  el servicio al actualizar la app; ahora se reinicia solo al abrir la app,
+  con el reinstalado (`MY_PACKAGE_REPLACED`) y en el arranque).
+- **Arreglo: el receptor de cambio de sonido** usaba `RECEIVER_NOT_EXPORTED`,
+  con el que Android **no entrega** muchos broadcasts del sistema (como
+  `RINGER_MODE_CHANGED`) — ahora usa `RECEIVER_EXPORTED`, que es el correcto
+  para broadcasts del sistema (protegidos: solo el sistema puede enviarlos).
+- **Ahora detecta No Molestar 🤫** además de silencio y vibración: observa
+  `zen_mode` y muestra el mismo aviso para activar el temporizador de un toque.
+- **Aviso en canal propio de alta prioridad** (banners) para que el aviso de
+  activar el temporizador nunca se pierda, con permiso para saltarse el
+  No Molestar si diste el acceso.
+- **«ACTIVAR» también funciona con No Molestar puro** (modo de timbre normal):
+  solo programa el retorno sin forzar el silencio.
+
 ## Novedades de la versión 0.27.2 (v27.2)
 
 - **Ayuda que señala:** el ❓ ya no solo informa: cada ventana de la guía

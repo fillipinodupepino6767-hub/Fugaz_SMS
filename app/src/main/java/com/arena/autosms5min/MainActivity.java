@@ -89,6 +89,8 @@ public final class MainActivity extends Activity {
             SetupHelper.continueAutoSetupIfPending(this, REQUEST_SMS_ROLE);
         }
         refresh();
+        // Updates kill services: bring the ringer watch back when it is enabled.
+        RingerWatchService.ensureRunning(this);
         // Quiet one-time nudges (never stack on welcome/tour dialogs).
         SetupHelper.maybeRemindSetup(this, REQUEST_SMS_ROLE);
         SetupHelper.maybeCelebrate(this);

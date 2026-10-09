@@ -6,9 +6,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.database.ContentObserver;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.provider.Settings;
 
 /**
  * Watches the ringer mode while enabled. Android 8+ does not deliver
@@ -17,6 +22,13 @@ import android.os.IBinder;
  * (Volume Styles, system buttons, any app) it posts a prompt notification;
  * the user arms the timer with one tap. Nothing is ever armed by itself.
  *
+ * Do Not Disturb (No Molestar) does NOT change the ringer mode, so Android
+ * never broadcasts it: the service also observes the Settings "zen_mode"
+ * value and prompts when DND turns on. The ringer receiver is flagged
+ * RECEIVER_EXPORTED because Android requires that for system broadcasts
+ * (NOT_EXPORTED silently drops them on many devices); RINGER_MODE_CHANGED
+ * is a protected broadcast, so only the system can send it.
+ *
  * On Android 14+ the service uses the specialUse FGS type (declared in the
  * manifest with a subtype explaining the user-opted ringer watchdog).
  */
@@ -24,12 +36,23 @@ public final class RingerWatchService extends Service {
     private static final int FOREGROUND_ID = 610026;
     /** Our own arm/restore mode changes are ignored inside this window. */
     private static final long SELF_CHANGE_WINDOW_MS = 15_000L;
+    /** True while the service instance is alive (survives in-process restarts). */
+    private static volatile boolean running;
     private boolean registered;
+    private ContentObserver zenObserver;
+
     private final BroadcastReceiver ringerChanged = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             onRingerModeChanged(context);
         }
     };
+
+    /** Restart after process/service death without spamming start commands. */
+    static void ensureRunning(Context context) {
+        if (!AppState.watchRinger(context)) return;
+        if (running) return;
+        setEnabled(context, true);
+    }
 
     static void setEnabled(Context context, boolean enabled) {
         Intent intent = new Intent(context, RingerWatchService.class);
@@ -51,16 +74,31 @@ public final class RingerWatchService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        running = true;
         promoteToForeground();
         RingerTimer.setLastSeenMode(this, currentMode());
+        RingerTimer.setLastSeenZen(this, RingerTimer.currentZen(this));
         if (!registered) {
             IntentFilter filter = new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION);
             if (Build.VERSION.SDK_INT >= 33) {
-                registerReceiver(ringerChanged, filter, Context.RECEIVER_NOT_EXPORTED);
+                // System broadcasts need RECEIVER_EXPORTED (see class docs).
+                registerReceiver(ringerChanged, filter, Context.RECEIVER_EXPORTED);
             } else {
                 registerReceiver(ringerChanged, filter);
             }
             registered = true;
+        }
+        // No Molestar never changes the ringer mode: watch zen_mode directly.
+        zenObserver = new ContentObserver(new Handler(Looper.getMainLooper())) {
+            @Override public void onChange(boolean selfChange, Uri uri) {
+                onZenChanged(RingerWatchService.this);
+            }
+        };
+        try {
+            getContentResolver().registerContentObserver(
+                    Settings.Global.getUriFor("zen_mode"), false, zenObserver);
+        } catch (Exception ignored) {
+            zenObserver = null; // Rare OEM restriction; ringer watch still works.
         }
     }
 
@@ -93,6 +131,7 @@ public final class RingerWatchService extends Service {
 
     @Override
     public void onDestroy() {
+        running = false;
         if (registered) {
             try {
                 unregisterReceiver(ringerChanged);
@@ -100,6 +139,14 @@ public final class RingerWatchService extends Service {
                 // Already unregistered.
             }
             registered = false;
+        }
+        if (zenObserver != null) {
+            try {
+                getContentResolver().unregisterContentObserver(zenObserver);
+            } catch (Exception ignored) {
+                // Already unregistered.
+            }
+            zenObserver = null;
         }
         NotificationHelper.cancelWatchPrompt(this);
         super.onDestroy();
@@ -134,5 +181,20 @@ public final class RingerWatchService extends Service {
         }
         NotificationHelper.showRingerWatchPrompt(context,
                 mode == AudioManager.RINGER_MODE_VIBRATE);
+    }
+
+    /** Rising edge of No Molestar (zen 0 -> on) prompts, same as silent mode. */
+    static void onZenChanged(Context context) {
+        if (!AppState.watchRinger(context)) return;
+        int zen = RingerTimer.currentZen(context);
+        int last = RingerTimer.lastSeenZen(context);
+        RingerTimer.setLastSeenZen(context, zen);
+        if (zen == 0) {
+            NotificationHelper.cancelWatchPrompt(context);
+            return;
+        }
+        if (last != 0) return;
+        if (RingerTimer.isArmed(context)) return;
+        NotificationHelper.showDndWatchPrompt(context);
     }
 }

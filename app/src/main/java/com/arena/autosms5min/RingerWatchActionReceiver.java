@@ -15,10 +15,14 @@ public final class RingerWatchActionReceiver extends BroadcastReceiver {
         NotificationHelper.cancelWatchPrompt(context);
         AudioManager audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         int mode = audio == null ? AudioManager.RINGER_MODE_NORMAL : audio.getRingerMode();
-        // The phone is already silent: only schedule the restore, no need to re-silence.
-        if (mode == AudioManager.RINGER_MODE_NORMAL) return;
+        boolean ringerQuiet = mode != AudioManager.RINGER_MODE_NORMAL;
+        boolean dndOn = RingerTimer.currentZen(context) > 0;
+        // Nothing silenced the phone (user already un-silenced): nothing to do.
+        if (!ringerQuiet && !dndOn) return;
+        // Pure No Molestar keeps the ringer in normal: schedule the restore
+        // (lifts DND when policy access is granted) without touching the ringer.
         long restoreAt = RingerTimer.arm(context, AppState.watchDefaultMinutes(context),
-                mode == AudioManager.RINGER_MODE_VIBRATE);
+                mode == AudioManager.RINGER_MODE_VIBRATE, ringerQuiet);
         NotificationHelper.showWatchArmed(context, restoreAt);
     }
 }
