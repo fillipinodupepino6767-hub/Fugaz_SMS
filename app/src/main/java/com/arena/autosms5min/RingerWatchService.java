@@ -49,7 +49,7 @@ public final class RingerWatchService extends Service {
 
     /** Restart after process/service death without spamming start commands. */
     static void ensureRunning(Context context) {
-        if (!AppState.watchRinger(context)) return;
+        if (!AppState.watchRinger(context) && !RingerTimer.isArmed(context)) return;
         if (running) return;
         setEnabled(context, true);
     }
@@ -122,7 +122,8 @@ public final class RingerWatchService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (!AppState.watchRinger(this)) {
+        // Runs with the optional watch on, or while a countdown needs watching.
+        if (!AppState.watchRinger(this) && !RingerTimer.isArmed(this)) {
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -163,11 +164,22 @@ public final class RingerWatchService extends Service {
     }
 
     static void onRingerModeChanged(Context context) {
-        if (!AppState.watchRinger(context)) return;
         AudioManager audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         int mode = audio == null ? AudioManager.RINGER_MODE_NORMAL : audio.getRingerMode();
         int last = RingerTimer.lastSeenMode(context);
         RingerTimer.setLastSeenMode(context, mode);
+        // Countdown running: sound back on by hand → note it once and keep
+        // waiting (the restore at the end becomes a no-op if still active).
+        if (RingerTimer.isArmed(context)) {
+            if (mode == AudioManager.RINGER_MODE_NORMAL) {
+                NotificationHelper.cancelWatchPrompt(context);
+                if (RingerTimer.currentZen(context) == 0) {
+                    noteExternalRestore(context);
+                }
+            }
+            return;
+        }
+        if (!AppState.watchRinger(context)) return;
         // Only fresh normal -> silent/vibrate transitions prompt. Returning to
         // normal dismisses any pending prompt instead of nagging.
         if (mode == AudioManager.RINGER_MODE_NORMAL) {
@@ -175,7 +187,6 @@ public final class RingerWatchService extends Service {
             return;
         }
         if (last != AudioManager.RINGER_MODE_NORMAL) return;
-        if (RingerTimer.isArmed(context)) return;
         if (System.currentTimeMillis() - RingerTimer.selfChangeAt(context) < SELF_CHANGE_WINDOW_MS) {
             return;
         }
@@ -185,16 +196,28 @@ public final class RingerWatchService extends Service {
 
     /** Rising edge of No Molestar (zen 0 -> on) prompts, same as silent mode. */
     static void onZenChanged(Context context) {
-        if (!AppState.watchRinger(context)) return;
         int zen = RingerTimer.currentZen(context);
         int last = RingerTimer.lastSeenZen(context);
         RingerTimer.setLastSeenZen(context, zen);
+        boolean armed = RingerTimer.isArmed(context);
+        boolean watch = AppState.watchRinger(context);
+        if (!armed && !watch) return;
         if (zen == 0) {
             NotificationHelper.cancelWatchPrompt(context);
+            // DND lifted by hand while counting down: same external note.
+            if (armed && RingerTimer.soundActive(context)) {
+                noteExternalRestore(context);
+            }
             return;
         }
-        if (last != 0) return;
-        if (RingerTimer.isArmed(context)) return;
+        if (!watch || last != 0 || armed) return;
         NotificationHelper.showDndWatchPrompt(context);
+    }
+
+    /** "Seems you turned the sound back on yourself; waiting for you to stop it." */
+    static void noteExternalRestore(Context context) {
+        if (RingerTimer.externalNoted(context)) return;
+        RingerTimer.setExternalNoted(context, true);
+        NotificationHelper.showExternalRestoreNote(context);
     }
 }

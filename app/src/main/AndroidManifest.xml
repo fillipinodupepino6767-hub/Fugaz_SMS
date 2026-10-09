@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
     <!-- Android 13+: runtime permission for incoming and deletion notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Optional: show contact names and photos instead of raw numbers. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Silence timer: restore the ringer sound (normal permission). -->

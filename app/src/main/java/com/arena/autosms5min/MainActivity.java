@@ -38,6 +38,11 @@ public final class MainActivity extends Activity {
     private InboxAdapter adapter;
     private RecyclerView list;
     private LinearLayout emptyState;
+    private View lockCover;
+    private long pausedAt;
+    private boolean postLockRan;
+    private int unreadCount;
+    private boolean onlyUnread;
     private LinearLayout warningBanner;
     private TextView warningText;
     private TextView subtitle;
@@ -62,6 +67,18 @@ public final class MainActivity extends Activity {
         buildUi();
         NotificationHelper.ensureChannels(this);
         SetupHelper.noteFirstOpen(this);
+        lockCover = AppLock.installCover(this);
+        if (AppLock.enabled(this)) {
+            lockNow(); // PIN first; welcome/permissions run after the unlock.
+        } else {
+            proceedPostLock();
+        }
+    }
+
+    /** Welcome + permission prompts run only once, after the PIN (if any). */
+    private void proceedPostLock() {
+        if (postLockRan) return;
+        postLockRan = true;
         // One-time welcome (first install or after an update) comes before system
         // dialogs; permissions are requested as soon as the user picks an option.
         boolean welcomeShown = HelpTour.showWelcomeIfNeeded(this,
@@ -78,6 +95,16 @@ public final class MainActivity extends Activity {
         handleComposeIntent(getIntent());
     }
 
+    private void lockNow() {
+        if (lockCover == null) return;
+        AppLock.ask(this, lockCover, new Runnable() {
+            @Override
+            public void run() {
+                proceedPostLock();
+            }
+        });
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -91,15 +118,27 @@ public final class MainActivity extends Activity {
         refresh();
         // Updates kill services: bring the ringer watch back when it is enabled.
         RingerWatchService.ensureRunning(this);
-        // Quiet one-time nudges (never stack on welcome/tour dialogs).
-        SetupHelper.maybeRemindSetup(this, REQUEST_SMS_ROLE);
-        SetupHelper.maybeCelebrate(this);
+        // Relock if the app was away for a while (privacy).
+        long away = pausedAt;
+        pausedAt = 0L;
+        boolean lockedNow = away > 0L
+                && System.currentTimeMillis() - away >= 5_000L
+                && AppLock.enabled(this)
+                && lockCover != null && lockCover.getVisibility() != View.VISIBLE;
+        if (lockedNow) {
+            lockNow();
+        } else {
+            // Quiet one-time nudges (never stack on welcome/tour dialogs).
+            SetupHelper.maybeRemindSetup(this, REQUEST_SMS_ROLE);
+            SetupHelper.maybeCelebrate(this);
+        }
         refreshHandler.removeCallbacks(refreshTicker);
         refreshHandler.postDelayed(refreshTicker, 1_000L);
     }
 
     @Override
     protected void onPause() {
+        pausedAt = System.currentTimeMillis();
         refreshHandler.removeCallbacks(refreshTicker);
         super.onPause();
     }
@@ -160,6 +199,12 @@ public final class MainActivity extends Activity {
         subtitle.setText("Bandeja temporal y privada");
         subtitle.setTextColor(ThemeColors.secondaryText(dark));
         Ui.text(subtitle, 13f);
+        subtitle.setOnClickListener(v -> {
+            if (onlyUnread || unreadCount > 0) {
+                onlyUnread = !onlyUnread;
+                refresh();
+            }
+        });
         titles.addView(title);
         titles.addView(subtitle);
         toolbar.addView(titles, new LinearLayout.LayoutParams(0,
@@ -197,6 +242,17 @@ public final class MainActivity extends Activity {
         Ui.text(warningText, 15f);
         warningBanner.addView(warningText, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button why = new Button(this);
+        why.setText("\u00BFPOR QU\u00C9?");
+        why.setAllCaps(false);
+        Ui.text(why, 14f);
+        why.setTextColor(ThemeColors.accent(dark));
+        why.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        why.setMinHeight(dp(48));
+        why.setContentDescription("Diagn\u00f3stico de recepci\u00f3n");
+        why.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)
+                .putExtra(SettingsActivity.EXTRA_OPEN_DIAGNOSTICS, true)));
+        warningBanner.addView(why);
         Button repair = new Button(this);
         repair.setText("REPARAR");
         repair.setAllCaps(false);
@@ -465,9 +521,12 @@ public final class MainActivity extends Activity {
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         boolean neverMode = AppState.retentionMillis(this) == AppState.NEVER;
         int total = 0;
+        unreadCount = 0;
         for (SmsStore.SmsItem item : all) {
             if (ArchiveStore.isArchived(this, item.id)) continue;
             total++;
+            if (item.isUnread()) unreadCount++;
+            if (onlyUnread && !item.isUnread()) continue;
             if (!matchesQuery(item)) continue;
             shownItems.add(item);
             String direction = item.type == SmsStore.TYPE_SENT ? "Tú → " : "← ";
@@ -496,12 +555,22 @@ public final class MainActivity extends Activity {
         boolean hasMessages = !shownItems.isEmpty();
         list.setVisibility(hasMessages ? View.VISIBLE : View.GONE);
         emptyState.setVisibility(hasMessages ? View.GONE : View.VISIBLE);
+        String unreadPart = "";
+        if (query.isEmpty() && onlyUnread) {
+            unreadPart = " · 🟡 sin leer: " + unreadCount + " ▸";
+        } else if (query.isEmpty() && unreadCount > 0) {
+            unreadPart = " · 🟡 " + unreadCount + " sin leer ▸";
+        }
         if (!query.isEmpty()) {
             subtitle.setText("🔎 " + shownItems.size() + " de " + total + " · filtro: «" + query + "»");
             emptyTitle.setText("Sin resultados");
             emptyBody.setText("Nada coincide con «" + query + "».\nPrueba con otro nombre, número o palabra.");
+        } else if (onlyUnread && shownItems.isEmpty()) {
+            subtitle.setText("🟡 Todo leído ✅ ▸");
+            emptyTitle.setText("Todo leído ✅");
+            emptyBody.setText("No queda ningún mensaje sin leer.\nToca arriba para ver toda la bandeja.");
         } else {
-            subtitle.setText("Bandeja temporal · borrado: " + AppState.retentionLabel(this));
+            subtitle.setText("Bandeja temporal · borrado: " + AppState.retentionLabel(this) + unreadPart);
             emptyTitle.setText("Sin mensajes");
             emptyBody.setText("Todo despejado y limpio ✨\nTu bandeja se tomó un respiro.");
         }

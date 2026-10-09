@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.text.InputType;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -24,7 +25,11 @@ import java.util.Map;
 public final class SettingsActivity extends Activity implements HelpTour.Host {
     /** Extra: start the contextual help tour right after opening. */
     public static final String EXTRA_START_HELP = "start_help";
+    /** Extra: open the reception diagnostics right away (from the yellow bar). */
+    public static final String EXTRA_OPEN_DIAGNOSTICS = "open_diagnostics";
     private static final int REQUEST_SMS_ROLE = 400;
+    private static final int REQUEST_EXPORT = 420;
+    private static final int REQUEST_IMPORT = 421;
     private static final String GOOGLE_MESSAGES_PKG = "com.google.android.apps.messaging";
     private boolean dark;
     private TextView status;
@@ -45,17 +50,31 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
     private Button themeButton;
     private Button watchButton;
     private Button watchTimeButton;
+    private Button privButton;
+    private Button changePinButton;
+    private Button bioButton;
     private ScrollView scroll;
     private final Map<String, View> helpAnchors = new HashMap<>();
     private final List<TextView> notes = new ArrayList<>();
     private boolean helpPending;
-    private View lastFlashed;
-    private final Runnable flashReset = new Runnable() {
+    private View blinkingView;
+    private android.graphics.drawable.Drawable blinkingSaved;
+    private boolean blinkPhaseOn;
+    /** Keeps the highlighted section blinking while its help window is shown. */
+    private final Runnable blinkRunnable = new Runnable() {
         @Override
         public void run() {
-            if (lastFlashed != null) {
-                lastFlashed.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            if (blinkingView == null) return;
+            blinkPhaseOn = !blinkPhaseOn;
+            if (blinkPhaseOn) {
+                blinkingView.setBackground(
+                        ThemeColors.rounded(SettingsActivity.this, highlightColor(), 8));
+            } else if (blinkingSaved != null) {
+                blinkingView.setBackground(blinkingSaved);
+            } else {
+                blinkingView.setBackgroundColor(android.graphics.Color.TRANSPARENT);
             }
+            blinkingView.postDelayed(this, blinkPhaseOn ? 700L : 500L);
         }
     };
 
@@ -74,6 +93,14 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                 public void run() {
                     helpPending = false;
                     HelpTour.start(SettingsActivity.this, SettingsActivity.this);
+                }
+            });
+        } else if (getIntent().getBooleanExtra(EXTRA_OPEN_DIAGNOSTICS, false)) {
+            getIntent().putExtra(EXTRA_OPEN_DIAGNOSTICS, false);
+            scroll.post(new Runnable() {
+                @Override
+                public void run() {
+                    showDiagnostics();
                 }
             });
         }
@@ -98,8 +125,50 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         ensureSmsPermissionsIfDefault();
+        if (requestCode == REQUEST_EXPORT && resultCode == RESULT_OK
+                && data != null && data.getData() != null) {
+            exportTo(data.getData());
+        } else if (requestCode == REQUEST_IMPORT && resultCode == RESULT_OK
+                && data != null && data.getData() != null) {
+            importFrom(data.getData());
+        }
         // Auto-setup resume is handled in onResume (covers role + settings screens).
         refreshUi();
+    }
+
+    private void exportTo(Uri uri) {
+        try (java.io.OutputStream out = getContentResolver().openOutputStream(uri)) {
+            if (out == null) throw new java.io.IOException("sin flujo de escritura");
+            out.write(SettingsPort.exportJson(this)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            Toast.makeText(this, "Ajustes exportados \u2713", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "No se pudo exportar: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void importFrom(Uri uri) {
+        try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) throw new java.io.IOException("sin flujo de lectura");
+            java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+            byte[] chunk = new byte[4096];
+            int read;
+            while ((read = in.read(chunk)) != -1) buffer.write(chunk, 0, read);
+            int applied = SettingsPort.importJson(this,
+                    new String(buffer.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+            Toast.makeText(this, "Ajustes importados \u2713 (" + applied + " valores)",
+                    Toast.LENGTH_LONG).show();
+            if (AppState.watchRinger(this) || RingerTimer.isArmed(this)) {
+                RingerWatchService.ensureRunning(this);
+            } else {
+                RingerWatchService.setEnabled(this, false);
+            }
+            recreate();
+        } catch (Exception e) {
+            Toast.makeText(this, "No se pudo importar: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -315,7 +384,8 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         watchButton.setOnClickListener(v -> {
             boolean enabled = !AppState.watchRinger(this);
             AppState.setWatchRinger(this, enabled);
-            RingerWatchService.setEnabled(this, enabled);
+            // Keep the watcher alive while a countdown still needs it.
+            RingerWatchService.setEnabled(this, enabled || RingerTimer.isArmed(this));
             Toast.makeText(this, enabled ? "Vigilancia activada." : "Vigilancia desactivada.",
                     Toast.LENGTH_SHORT).show();
             refreshUi();
@@ -344,7 +414,48 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         themeButton.setOnClickListener(v -> showThemePicker());
         root.addView(themeButton);
 
-                TextView anchor_ayuda = sectionTitle("Ayuda");
+                root.addView(sectionTitle("Privacidad"));
+        privButton = actionButton("");
+        privButton.setOnClickListener(v -> toggleLock());
+        root.addView(privButton);
+        helpAnchors.put("privacidad", privButton);
+        changePinButton = actionButton("CAMBIAR PIN");
+        changePinButton.setOnClickListener(v -> promptNewPin());
+        root.addView(changePinButton);
+        bioButton = actionButton("");
+        bioButton.setOnClickListener(v -> toggleBio());
+        root.addView(bioButton);
+
+        root.addView(sectionTitle("Datos"));
+        Button export = actionButton("EXPORTAR AJUSTES (ARCHIVO)");
+        export.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                    .addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("application/json")
+                    .putExtra(Intent.EXTRA_TITLE, "fugaz-sms-ajustes.json");
+            try {
+                startActivityForResult(intent, REQUEST_EXPORT);
+            } catch (Exception failed) {
+                Toast.makeText(this, "Este Android no ofrece guardar archivos.",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+        root.addView(export);
+        Button importBtn = actionButton("IMPORTAR AJUSTES");
+        importBtn.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                    .addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("application/json");
+            try {
+                startActivityForResult(intent, REQUEST_IMPORT);
+            } catch (Exception failed) {
+                Toast.makeText(this, "Este Android no ofrece abrir archivos.",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+        root.addView(importBtn);
+
+        TextView anchor_ayuda = sectionTitle("Ayuda");
         helpAnchors.put("ayuda", anchor_ayuda);
         root.addView(anchor_ayuda);
         Button quickGuide = actionButton("GUÍA RÁPIDA (VENTANAS CON ✕)");
@@ -365,7 +476,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.27.3 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.27.6 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
         root.addView(footer);
@@ -382,20 +493,46 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
             @Override
             public void run() {
                 scroll.smoothScrollTo(0, Math.max(0, anchor.getTop() - dp(14)));
-                flashAnchor(anchor);
+                startBlink(anchor);
             }
         });
     }
 
-    private void flashAnchor(View anchor) {
-        anchor.removeCallbacks(flashReset);
-        if (lastFlashed != null && lastFlashed != anchor) {
-            lastFlashed.removeCallbacks(flashReset);
-            lastFlashed.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+    /** Stops any previous section first (next/back never leaves two blinking). */
+    private void startBlink(View anchor) {
+        stopBlink();
+        blinkingView = anchor;
+        blinkingSaved = anchor.getBackground();
+        blinkPhaseOn = false;
+        anchor.post(blinkRunnable);
+    }
+
+    private void stopBlink() {
+        if (blinkingView != null) {
+            blinkingView.removeCallbacks(blinkRunnable);
+            if (blinkingSaved != null) {
+                blinkingView.setBackground(blinkingSaved);
+            } else {
+                blinkingView.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            }
         }
-        lastFlashed = anchor;
-        anchor.setBackground(ThemeColors.rounded(this, ThemeColors.sentBubble(dark), 8));
-        anchor.postDelayed(flashReset, 1600L);
+        blinkingView = null;
+        blinkingSaved = null;
+        blinkPhaseOn = false;
+    }
+
+    @Override
+    public void onTourClosed() {
+        stopBlink();
+    }
+
+    /**
+     * Highlight that is darker than the background but lighter than the text
+     * and deliberately not the blue accent: amber (light) / bronze (dark).
+     */
+    private int highlightColor() {
+        return dark ? android.graphics.Color.rgb(83, 62, 18)
+                    : android.graphics.Color.rgb(255, 179, 0);
     }
 
     private void applyNotesVisibility(Button toggle) {
@@ -442,6 +579,16 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
 
     private void refreshUi() {
         maybeNudge();
+        if (privButton != null) {
+            privButton.setText(AppLock.isSet(this)
+                    ? ("BLOQUEO AL ABRIR: " + (AppLock.enabled(this)
+                            ? "SÍ (PIN ACTIVO)" : "NO (PIN GUARDADO)"))
+                    : "BLOQUEO AL ABRIR: SIN PIN (TOCA PARA CREAR)");
+            changePinButton.setVisibility(AppLock.isSet(this) ? View.VISIBLE : View.GONE);
+            bioButton.setVisibility(AppLock.isSet(this) ? View.VISIBLE : View.GONE);
+            bioButton.setText("DESBLOQUEO CON HUELLA: "
+                    + (AppLock.bioEnabled(this) ? "SÍ (ACTIVA)" : "NO (APAGADA)"));
+        }
         boolean isDefault = isDefaultSmsApp();
         boolean smsPerms = SetupHelper.hasSmsPermissions(this);
         boolean notifOn = SetupHelper.notificationsEnabled(this);
@@ -834,6 +981,71 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
 
     private boolean isDefaultSmsApp() {
         return SetupHelper.isDefaultSms(this);
+    }
+
+    private void toggleLock() {
+        if (!AppLock.isSet(this)) {
+            promptNewPin();
+            return;
+        }
+        AppLock.setEnabled(this, !AppLock.enabled(this));
+        Toast.makeText(this, AppLock.enabled(this)
+                        ? "Bloqueo activado: se pedirá PIN al abrir."
+                        : "Bloqueo desactivado (el PIN queda guardado).",
+                Toast.LENGTH_SHORT).show();
+        refreshUi();
+    }
+
+    /**
+     * Fingerprint unlock is its own opt-in: it starts disabled and only turns
+     * on after the user confirms with their own finger. Cancelling keeps it off.
+     */
+    private void toggleBio() {
+        if (AppLock.bioEnabled(this)) {
+            AppLock.setBio(this, false);
+            Toast.makeText(this, "Desbloqueo con huella desactivado.",
+                    Toast.LENGTH_SHORT).show();
+            refreshUi();
+            return;
+        }
+        boolean shown = AppLock.promptBio(this, "Activar desbloqueo con huella",
+                "Confirma con tu huella para encenderlo. Si cancelas, sigue apagado.",
+                "Ahora no",
+                () -> {
+                    AppLock.setBio(this, true);
+                    Toast.makeText(this, "Desbloqueo con huella activado ✓",
+                            Toast.LENGTH_SHORT).show();
+                    refreshUi();
+                },
+                reason -> {
+                    if (reason != null && !reason.isEmpty()) {
+                        Toast.makeText(this, "No se activó: " + reason,
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+        if (!shown) {
+            Toast.makeText(this,
+                    "Este teléfono no ofrece huella (requiere Android 9 o superior).",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void promptNewPin() {
+        ThemedDialog.input(this, "PIN de la app",
+                "Escribe un PIN de 4 a 10 dígitos. Se pedirá cada vez que abras Fugaz SMS.",
+                "", InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIANT_PASSWORD,
+                null, "Cancelar", "Guardar", null, value -> {
+                    if (!AppLock.pinFormatOk(value)) {
+                        Toast.makeText(this, "Usa de 4 a 10 dígitos.",
+                                Toast.LENGTH_SHORT).show();
+                        promptNewPin();
+                        return;
+                    }
+                    AppLock.setPin(this, value);
+                    Toast.makeText(this, "PIN guardado. Bloqueo activado ✓",
+                            Toast.LENGTH_SHORT).show();
+                    refreshUi();
+                });
     }
 
     private void maybeNudge() {

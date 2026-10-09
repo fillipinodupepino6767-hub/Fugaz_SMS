@@ -3,6 +3,55 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.27.6 (v27.6)
+
+- **Desbloqueo con huella (opcional):** en Privacidad aparece el botón
+  **DESBLOQUEO CON HUELLA**, una opción **apagada por defecto** que solo se
+  enciende cuando tú la confirmas con tu huella (Android 9+). Se puede apagar
+  cuando quieras; si el teléfono no tiene huellas o no hay sensor, se pide el
+  PIN como siempre. El bloqueo al abrir sigue **desactivado por defecto**:
+  nada se activa solo.
+- **La guía (❓) lo menciona y lo señala:** nueva ventana «🔒 PIN o huella
+  (opcional)» que explica dónde está la opción de bloquear, con el botón
+  BLOQUEO AL ABRIR **resaltado con el fondo parpadeante** mientras la ventana
+  está abierta (bronce en tema oscuro, ámbar en claro).
+- **Arreglo del resaltado:** al terminar de parpadear se restaura el fondo
+  original de la sección apuntada (los botones, como ① CONFIGURACIÓN
+  AUTOMÁTICA, ya no quedan sin su fondo).
+
+## Novedades de la versión 0.27.5 (v27.5)
+
+- **Bloqueo con PIN (Privacidad):** crea un PIN de 4–10 dígitos en
+  Configuración → Privacidad; se pide al abrir la bandeja (y al abrir una
+  conversación por notificación), con pantalla tapada mientras tanto, y
+  vuelve a pedirse si la app estuvo más de 5 segundos en segundo plano.
+- **No leídos:** contador 🟡 en el subtítulo de la bandeja; tócalo para ver
+  solo lo sin leer y toca de nuevo para volver. Al abrir la conversación se
+  marca como leída.
+- **Exportar/importar ajustes (Datos):** guarda tus preferencias, lista de
+  bloqueados, palabras clave y PIN (hash) en un archivo JSON y restáuralas en
+  otro teléfono.
+- **«¿POR QUÉ?» en la barra amarilla:** un toque abre el diagnóstico de
+  recepción directamente (junto a REPARAR).
+- Pendiente: versión en inglés (requiere extraer todos los textos a
+  resources; se hará en una versión dedicada para no dejar traducciones a
+  medias).
+
+## Novedades de la versión 0.27.4 (v27.4)
+
+- **Ayuda que señala:** el resaltado de la sección ahora **parpadea de forma
+  continua** mientras dura su ventana; al cambiar de paso (Siguiente/Atrás) se
+  detiene el anterior y arranca el nuevo sin duplicarse, y al cerrar todo se
+  apaga. Color aparte del azul: **ámbar** en tema claro (más oscuro que el
+  fondo, más claro que el texto) y **bronce** en tema oscuro.
+- **Sonido restaurado a mano:** si el temporizador está corriendo y vuelves a
+  poner el sonido por fuera de la app, aparece «Parece que activaste solo el
+  sonido. Estoy a la espera de cuando lo desactives» (aviso + estado en la
+  pantalla del temporizador), el conteo sigue esperando y **al terminar no se
+  muestra el mensaje de "Sonido restaurado" si todo ya está activo**.
+- La vigilancia se mantiene viva mientras haya un temporizador en curso (aunque
+  tengas apagado el interruptor de vigilancia opcional).
+
 ## Novedades de la versión 0.27.3 (v27.3)
 
 - **Arreglo: vigilancia de silencio reparada** tras actualizar (Android mata

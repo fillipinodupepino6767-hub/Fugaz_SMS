@@ -193,10 +193,16 @@ public final class SilenceTimerActivity extends Activity {
         modeNow.setText("Estado ahora: " + RingerTimer.currentModeLabel(this));
         long restoreAt = RingerTimer.restoreAt(this);
         if (restoreAt > 0L) {
-            String when = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
-                    .format(restoreAt);
-            status.setText("⏳ Programado: el sonido vuelve " + when
-                    + " (en " + CountdownFormatter.formatHistoryRemaining(restoreAt) + ").");
+            if (RingerTimer.soundActive(this)) {
+                // Un-silenced by hand: the countdown is pointless to display.
+                status.setText("Parece que activaste solo el sonido. "
+                        + "Estoy a la espera de cuando lo desactives.");
+            } else {
+                String when = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                        .format(restoreAt);
+                status.setText("⏳ Programado: el sonido vuelve " + when
+                        + " (en " + CountdownFormatter.formatHistoryRemaining(restoreAt) + ").");
+            }
             cancelButton.setVisibility(View.VISIBLE);
         } else {
             status.setText("No hay temporizador activo.");

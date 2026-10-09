@@ -20,6 +20,7 @@ final class RingerTimer {
     private static final String KEY_SELF_AT = "self_change_at";
     private static final String KEY_LAST_MODE = "last_seen_mode";
     private static final String KEY_LAST_ZEN = "last_seen_zen";
+    private static final String KEY_EXTERNAL_NOTED = "external_restore_noted";
     private static final int REQUEST_CODE = 61024;
     static final long MIN_MINUTES = 1L;
     static final long MAX_MINUTES = 720L; // 12 hours
@@ -47,9 +48,15 @@ final class RingerTimer {
                 // The timer is still armed; the user silences manually with the buttons.
             }
         }
-        prefs(context).edit().putLong(KEY_RESTORE_AT, restoreAt).apply();
+        prefs(context).edit()
+                .putLong(KEY_RESTORE_AT, restoreAt)
+                .putBoolean(KEY_EXTERNAL_NOTED, false)
+                .apply();
         noteSelfChange(context);
         schedule(context, restoreAt);
+        // While the countdown runs the watcher must watch even if the user
+        // turned the optional "vigilar silencio" toggle off.
+        RingerWatchService.ensureRunning(context);
         return restoreAt;
     }
 
@@ -71,9 +78,30 @@ final class RingerTimer {
         prefs(context).edit().putInt(KEY_LAST_ZEN, zen).apply();
     }
 
+    /** True when the phone is fully audible again: ringer normal and DND off. */
+    static boolean soundActive(Context context) {
+        AudioManager audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        int mode = audio == null ? AudioManager.RINGER_MODE_NORMAL : audio.getRingerMode();
+        return mode == AudioManager.RINGER_MODE_NORMAL && currentZen(context) == 0;
+    }
+
+    /** One note per countdown when the user un-silences the phone by hand. */
+    static boolean externalNoted(Context context) {
+        return prefs(context).getBoolean(KEY_EXTERNAL_NOTED, false);
+    }
+
+    static void setExternalNoted(Context context, boolean noted) {
+        prefs(context).edit().putBoolean(KEY_EXTERNAL_NOTED, noted).apply();
+    }
+
     /** Stops the timer. The phone stays as it is; the user un-silences manually. */
     static void cancel(Context context) {
         prefs(context).edit().remove(KEY_RESTORE_AT).apply();
+        // Countdown over or cancelled: if the optional watch is off, the
+        // watcher service has no more reason to run.
+        if (!AppState.watchRinger(context)) {
+            RingerWatchService.setEnabled(context, false);
+        }
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         PendingIntent pending = pendingIntent(context, PendingIntent.FLAG_NO_CREATE);
         if (alarms != null && pending != null) {

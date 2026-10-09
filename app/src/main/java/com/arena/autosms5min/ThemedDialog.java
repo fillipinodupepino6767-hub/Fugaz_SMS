@@ -76,23 +76,17 @@ final class ThemedDialog {
      */
     static void tourStep(Activity activity, String title, String message,
                          boolean canGoBack, String nextLabel,
-                         Runnable onBack, Runnable onNext, Runnable onClose) {
+                         Runnable onBack, Runnable onNext, Runnable onClosed) {
         Dialog dialog = new Dialog(activity);
         LinearLayout card = card(activity, dialog, title, message);
         LinearLayout buttons = buttonRow(activity);
         if (canGoBack) {
             Button back = textButton(activity, "\u2190 Atr\u00e1s", false);
-            back.setOnClickListener(v -> {
-                dialog.dismiss();
-                if (onBack != null) onBack.run();
-            });
+            back.setOnClickListener(v -> dialog.dismiss());
             buttons.addView(back);
         }
         Button close = textButton(activity, "\u2715", false);
-        close.setOnClickListener(v -> {
-            dialog.dismiss();
-            if (onClose != null) onClose.run();
-        });
+        close.setOnClickListener(v -> dialog.dismiss());
         buttons.addView(close);
         Button next = textButton(activity, nextLabel, true);
         next.setOnClickListener(v -> {
@@ -101,7 +95,9 @@ final class ThemedDialog {
         });
         buttons.addView(next);
         card.addView(buttons);
-        finish(activity, dialog, card, true);
+        // onClosed fires on every dismissal (✕, ◀, Siguiente, back gesture), so
+        // the host can stop its section highlight before the next step starts.
+        finish(activity, dialog, card, true, onClosed);
     }
 
     /** Scrollable single-choice sheet in the style of the history retention picker. */
@@ -177,6 +173,14 @@ final class ThemedDialog {
     static void input(Activity activity, String title, String message, String initial, int inputType,
                       String neutralLabel, String cancelLabel, String okLabel,
                       Runnable onNeutral, OnText onSave) {
+        input(activity, title, message, initial, inputType, neutralLabel, cancelLabel, okLabel,
+                onNeutral, onSave, null);
+    }
+
+    /** input() with a callback when the user cancels without saving. */
+    static void input(Activity activity, String title, String message, String initial, int inputType,
+                      String neutralLabel, String cancelLabel, String okLabel,
+                      Runnable onNeutral, OnText onSave, Runnable onCancel) {
         boolean dark = AppState.isDarkMode(activity);
         Dialog dialog = new Dialog(activity);
         LinearLayout card = card(activity, dialog, title, message);
@@ -199,7 +203,10 @@ final class ThemedDialog {
             }));
         }
         card.addView(optionButton(activity, cancelLabel == null ? "Cancelar" : cancelLabel, false,
-                v -> dialog.dismiss()));
+                v -> {
+                    dialog.dismiss();
+                    if (onCancel != null) onCancel.run();
+                }));
         card.addView(optionButton(activity, okLabel == null ? "Guardar" : okLabel, true, v -> {
             dialog.dismiss();
             if (onSave != null) onSave.onText(field.getText().toString());
@@ -278,17 +285,20 @@ final class ThemedDialog {
     }
 
     private static void finish(Activity activity, Dialog dialog, LinearLayout card) {
-        finish(activity, dialog, card, false);
+        finish(activity, dialog, card, false, null);
     }
 
     private static void finish(Activity activity, Dialog dialog, LinearLayout card,
-                               boolean pinToBottom) {
+                               boolean pinToBottom, Runnable onClosed) {
         ScrollView scroll = new ScrollView(activity);
         scroll.setBackgroundColor(Color.TRANSPARENT);
         scroll.addView(card);
         dialog.setContentView(scroll);
         activeCount++;
-        dialog.setOnDismissListener(d -> activeCount--);
+        dialog.setOnDismissListener(d -> {
+            activeCount--;
+            if (onClosed != null) onClosed.run();
+        });
         dialog.show();
         if (dialog.getWindow() != null) {
             Window window = dialog.getWindow();

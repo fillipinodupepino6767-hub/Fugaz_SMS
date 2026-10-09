@@ -36,6 +36,7 @@ public final class ConversationActivity extends Activity {
     private final Handler countdownHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownTicker = new Runnable() {
         @Override public void run() {
+            SmsStore.markThreadRead(ConversationActivity.this, address);
             populateMessages();
             countdownHandler.postDelayed(this, 1_000L);
         }
@@ -51,12 +52,18 @@ public final class ConversationActivity extends Activity {
         }
         dark = AppState.isDarkMode(this);
         ThemeColors.applySystemBars(this, dark);
+        if (AppLock.enabled(this)) {
+            // Cold open (notification tap): cover + PIN; cancel finishes.
+            AppLock.ask(this, AppLock.installCover(this), null);
+        }
+        SmsStore.markThreadRead(this, address);
         buildUi();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        SmsStore.markThreadRead(this, address);
         updateHeader();
         populateMessages();
         countdownHandler.removeCallbacks(countdownTicker);

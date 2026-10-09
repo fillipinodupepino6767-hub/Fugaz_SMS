@@ -17,9 +17,12 @@ final class HelpTour {
 
     private HelpTour() { }
 
-    /** Implemented by the screen behind the tour: scroll to + flash a section. */
+    /** Implemented by the screen behind the tour: scroll to + highlight a section. */
     interface Host {
         void showStepAt(String anchorKey, int index);
+
+        /** Any tour window was dismissed (next, back, ✕ or gesture): stop the highlight. */
+        void onTourClosed();
     }
 
     /** Steps: [title, body, anchor key in Settings]. */
@@ -77,6 +80,15 @@ final class HelpTour {
                 + "el teléfono, te llega un aviso para activar el temporizador de un toque, "
                 + "sin abrir la app.",
             "sonido"},
+        {"🔒 PIN o huella (opcional)",
+            "Aquí detrás, en PRIVACIDAD, está BLOQUEO AL ABRIR (queda resaltada con el fondo): "
+                + "está APAGADO por defecto y solo se enciende si tú lo activas. Si no lo activas, "
+                + "nada cambia: la app se abre directo a tu bandeja como siempre.\n\n"
+                + "Al activarlo creas tu PIN (de 4 a 10 dígitos). Además existe DESBLOQUEO CON "
+                + "HUELLA: una opción aparte, también APAGADA por defecto, que solo se enciende "
+                + "cuando tú la confirmas con tu huella en el teléfono. Si la dejas apagada o el "
+                + "teléfono no tiene huellas, se pide el PIN y listo.",
+            "privacidad"},
         {"🆘 Ayuda y saldo",
             "La barra amarilla de la bandeja siempre dice qué falta; tócala (o REPARAR) y vas "
                 + "directo al paso pendiente.\n\n"
@@ -94,7 +106,7 @@ final class HelpTour {
                 + "IMPORTANTE: para recibir mensajes toca ⚙ Configuración → ① CONFIGURACIÓN "
                 + "AUTOMÁTICA y sigue los 5 pasos. Android te pedirá «Permitir ajustes "
                 + "restringidos» (con PIN o huella) si instalaste el APK.\n\n"
-                + "«Ver la guía» abre 7 ventanitas que señalan cada ajuste en Configuración "
+                + "«Ver la guía» abre 8 ventanitas que señalan cada ajuste en Configuración "
                 + "(con ← para volver atrás y ✕ para cerrar). El ❓ de la barra siempre la "
                 + "vuelve a abrir en la sección donde la dejaste.";
 
@@ -137,7 +149,12 @@ final class HelpTour {
                         showStep(activity, index + 1, host);
                     }
                 },
-                null); // ✕ just closes; the step is already saved for resuming
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        if (host != null) host.onTourClosed();
+                    }
+                });
     }
 
     /**

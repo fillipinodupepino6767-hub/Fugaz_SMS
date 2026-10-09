@@ -84,6 +84,22 @@ final class SmsStore {
                 Telephony.TextBasedSmsColumns.DATE + " ASC");
     }
 
+    /** Marks every unread message of a conversation as read (badge clearing). */
+    static void markThreadRead(Context context, String address) {
+        if (address == null || address.isEmpty()) return;
+        ContentValues values = new ContentValues();
+        values.put(Telephony.TextBasedSmsColumns.READ, 1);
+        values.put(Telephony.TextBasedSmsColumns.SEEN, 1);
+        try {
+            context.getContentResolver().update(Telephony.Sms.CONTENT_URI, values,
+                    Telephony.TextBasedSmsColumns.ADDRESS + "=? AND "
+                            + Telephony.TextBasedSmsColumns.READ + "=0",
+                    new String[]{address});
+        } catch (SecurityException ignored) {
+            // Not the default SMS app yet: nothing to update.
+        }
+    }
+
     private static List<SmsItem> read(Context context, String selection, String[] args, String order) {
         List<SmsItem> result = new ArrayList<>();
         String[] projection = {
@@ -91,7 +107,8 @@ final class SmsStore {
                 Telephony.TextBasedSmsColumns.ADDRESS,
                 Telephony.TextBasedSmsColumns.BODY,
                 Telephony.TextBasedSmsColumns.DATE,
-                Telephony.TextBasedSmsColumns.TYPE
+                Telephony.TextBasedSmsColumns.TYPE,
+                Telephony.TextBasedSmsColumns.READ
         };
         try (Cursor cursor = context.getContentResolver().query(
                 Telephony.Sms.CONTENT_URI, projection, selection, args, order)) {
@@ -101,9 +118,11 @@ final class SmsStore {
             int bodyIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.BODY);
             int dateIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.DATE);
             int typeIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.TYPE);
+            int readIndex = cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.READ);
             while (cursor.moveToNext()) {
                 result.add(new SmsItem(cursor.getLong(idIndex), cursor.getString(addressIndex),
-                        cursor.getString(bodyIndex), cursor.getLong(dateIndex), cursor.getInt(typeIndex)));
+                        cursor.getString(bodyIndex), cursor.getLong(dateIndex),
+                        cursor.getInt(typeIndex), cursor.getInt(readIndex)));
             }
         } catch (SecurityException ignored) {
             // The UI will remain empty until the user grants the SMS role and permissions.
@@ -127,13 +146,20 @@ final class SmsStore {
         final String body;
         final long date;
         final int type;
+        /** Provider READ flag: 0 = unread (inbox rows arrive with 0). */
+        final int read;
 
-        SmsItem(long id, String address, String body, long date, int type) {
+        SmsItem(long id, String address, String body, long date, int type, int read) {
             this.id = id;
             this.address = address == null ? "Desconocido" : address;
             this.body = body == null ? "" : body;
             this.date = date;
             this.type = type;
+            this.read = read;
+        }
+
+        boolean isUnread() {
+            return type == TYPE_INBOX && read == 0;
         }
     }
 }

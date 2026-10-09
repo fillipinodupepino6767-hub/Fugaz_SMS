@@ -23,6 +23,7 @@ final class NotificationHelper {
     private static final int WATCH_SERVICE_ID = 610026;
     private static final int WATCH_ARM_CODE = 610031;
     private static final int WATCH_OPEN_CODE = 610032;
+    private static final int EXTERNAL_RESTORE_ID = 610033;
 
     private NotificationHelper() { }
 
@@ -237,6 +238,35 @@ final class NotificationHelper {
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setWhen(System.currentTimeMillis());
         manager.notify(WATCH_ARMED_ID, builder.build());
+    }
+
+    /**
+     * Shown once per countdown when the user turns the sound back on by hand:
+     * the countdown keeps waiting and the end-of-timer message is suppressed
+     * later if everything is still active.
+     */
+    static void showExternalRestoreNote(Context context) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        createChannels(manager);
+        manager.cancel(WATCH_ARMED_ID); // the "vuelve a las X" confirmation is stale now
+        String message = "Parece que activaste solo el sonido. "
+                + "Estoy a la espera de cuando lo desactives.";
+        Intent open = new Intent(context, SilenceTimerActivity.class);
+        PendingIntent openIntent = PendingIntent.getActivity(context, WATCH_OPEN_CODE, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, WATCH_PROMPT_CHANNEL_ID)
+                : new Notification.Builder(context);
+        builder.setSmallIcon(android.R.drawable.sym_action_chat)
+                .setContentTitle("Sonido activado por ti \uD83D\uDD0A")
+                .setContentText(message)
+                .setStyle(new Notification.BigTextStyle().bigText(message))
+                .setContentIntent(openIntent)
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setWhen(System.currentTimeMillis());
+        manager.notify(EXTERNAL_RESTORE_ID, builder.build());
     }
 
     /** Quiet persistent notification required while the ringer watch service runs. */

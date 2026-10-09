@@ -16,6 +16,11 @@ public final class RingerRestoreReceiver extends BroadcastReceiver {
         if (intent == null || !ACTION_RESTORE.equals(intent.getAction())) return;
         RingerTimer.cancel(context); // Clears state first; this fire is one-shot.
         RingerTimer.noteSelfChange(context); // The watch must ignore our own restore.
+        // Sound was already restored by hand: nothing to do and no message —
+        // an "activated" notice would be wrong while it is already active.
+        if (RingerTimer.soundActive(context)) {
+            return;
+        }
         AudioManager audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         if (audio != null) {
             try {

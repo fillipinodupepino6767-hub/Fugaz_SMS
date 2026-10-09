@@ -18,8 +18,8 @@ android {
         applicationId 'com.arena.autosms5min'
         minSdk 23
         targetSdk 36
-        versionCode 31
-        versionName '0.27.3'
+        versionCode 34
+        versionName '0.27.6'
     }
 
     signingConfigs {
