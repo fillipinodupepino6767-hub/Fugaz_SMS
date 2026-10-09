@@ -95,7 +95,7 @@ final class HelpTour {
                 + "AUTOMÁTICA y sigue los 5 pasos. Android te pedirá «Permitir ajustes "
                 + "restringidos» (con PIN o huella) si instalaste el APK.\n\n"
                 + "«Ver la guía» abre 7 ventanitas que señalan cada ajuste en Configuración "
-                "(con ← para volver atrás y ✕ para cerrar). El ❓ de la barra siempre la "
+                + "(con ← para volver atrás y ✕ para cerrar). El ❓ de la barra siempre la "
                 + "vuelve a abrir en la sección donde la dejaste.";
 
     /** Start (or resume) the tour; each step is announced to the host. */
