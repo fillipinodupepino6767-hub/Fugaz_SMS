@@ -49,6 +49,7 @@ public final class MainActivity extends Activity {
     private TextView emptyTitle;
     private TextView emptyBody;
     private EditText searchBox;
+    private Button sizeButton;
     private String query = "";
     private boolean dark;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
@@ -300,6 +301,30 @@ public final class MainActivity extends Activity {
         clearSearch.setOnClickListener(v -> searchBox.setText(""));
         searchRow.addView(clearSearch, new LinearLayout.LayoutParams(dp(48), dp(48)));
         root.addView(searchRow);
+
+        // Quick actions: compose a new SMS and adjust the interface size.
+        LinearLayout quickRow = new LinearLayout(this);
+        quickRow.setOrientation(LinearLayout.HORIZONTAL);
+        quickRow.setPadding(dp(12), 0, dp(12), dp(6));
+        Button compose = new Button(this);
+        compose.setText("✏️ ESCRIBIR SMS");
+        Ui.styleActionButton(compose, dark);
+        compose.setMinHeight(dp(46));
+        Ui.text(compose, 14f);
+        compose.setOnClickListener(v -> startActivity(new Intent(this, ComposeActivity.class)));
+        quickRow.addView(compose, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        sizeButton = new Button(this);
+        Ui.styleActionButton(sizeButton, dark);
+        sizeButton.setMinHeight(dp(46));
+        Ui.text(sizeButton, 14f);
+        sizeButton.setText("Aa TAMAÑO: " + UiScale.label(this).toUpperCase());
+        sizeButton.setOnClickListener(v -> UiScale.showPicker(this, this::recreate));
+        LinearLayout.LayoutParams sizeParams = new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        sizeParams.setMargins(dp(6), 0, 0, 0);
+        quickRow.addView(sizeButton, sizeParams);
+        root.addView(quickRow);
 
         list = new RecyclerView(this);
         list.setLayoutManager(new LinearLayoutManager(this));

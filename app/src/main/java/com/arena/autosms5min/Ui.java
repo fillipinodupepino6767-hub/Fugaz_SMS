@@ -17,7 +17,7 @@ final class Ui {
 
     static int dp(Context context, float value) {
         float density = context.getResources().getDisplayMetrics().density;
-        return Math.round(value * density);
+        return Math.round(value * density * AppState.uiScale(context));
     }
 
     /**
@@ -35,7 +35,7 @@ final class Ui {
         // User already enlarged text: keep layout usable.
         if (fontScale >= 1.35f) boost = Math.min(boost, 1.04f);
         else if (fontScale >= 1.15f) boost = Math.min(boost, 1.08f);
-        return designSp * boost;
+        return designSp * boost * AppState.uiScale(context);
     }
 
     static void text(TextView view, float designSp) {

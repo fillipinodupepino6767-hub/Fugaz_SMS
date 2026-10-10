@@ -78,7 +78,9 @@ final class HelpTour {
                 + "configurar el sonido al desactivarlo, o configurarlo manualmente.\n\n"
                 + "👁 VIGILAR SILENCIO: si otra app, el sistema o No Molestar 🤫 silencian "
                 + "el teléfono, te llega un aviso para activar el temporizador de un toque, "
-                + "sin abrir la app.",
+                + "sin abrir la app.\n\n"
+                + "🔔 Cada categoría de mensaje (importante, normal, posible spam) tiene su "
+                + "propio canal: elige su sonido en los ajustes de notificaciones de Android.",
             "sonido"},
         {"🔒 PIN o huella (opcional)",
             "Aquí detrás, en PRIVACIDAD, está BLOQUEO AL ABRIR (queda resaltada con el fondo): "

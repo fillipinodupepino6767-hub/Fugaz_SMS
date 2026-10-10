@@ -3,6 +3,22 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.0 (v28)
+
+- **✏️ ESCRIBIR SMS:** botón nuevo en la bandeja para redactar y enviar un SMS
+  a cualquier número (con validación y aviso si el número está bloqueado). Lo
+  enviado queda en la conversación y no se borra solo; sale por la línea
+  elegida en Configuración.
+- **Tamaño de la interfaz ajustable:** botón «Aa TAMAÑO» en la bandeja y en
+  Configuración → Apariencia con 5 tamaños (85 % a 150 %). Escala textos,
+  botones, iconos y espaciados de toda la app al instante: útil en teléfonos
+  donde todo se ve diminuto (como el Motorola de la familia).
+- **Un sonido por categoría de mensaje:** las notificaciones entrantes usan
+  tres canales de Android —«SMS importantes», «SMS entrantes (normales)» y
+  «Posible spam»— y cada uno tiene su propio sonido elegible en los ajustes
+  de notificaciones del sistema (importantes suena más fuerte, el spam nace
+  silencioso). Nota nueva en Configuración y en la guía que lo explica.
+
 ## Novedades de la versión 0.27.9 (v27.9)
 
 - **El temporizador se detiene si reactivas el sonido por fuera:** con la

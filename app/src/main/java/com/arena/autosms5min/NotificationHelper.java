@@ -25,6 +25,9 @@ final class NotificationHelper {
     private static final int WATCH_OPEN_CODE = 610032;
     private static final int EXTERNAL_RESTORE_ID = 610033;
     private static final int NOTE_DISMISS_CODE = 610034;
+    /** One channel per message category so Android offers a sound per category. */
+    private static final String CHANNEL_IMPORTANT_ID = "incoming_important";
+    private static final String CHANNEL_SPAM_ID = "incoming_spam";
 
     private NotificationHelper() { }
 
@@ -55,7 +58,7 @@ final class NotificationHelper {
         PendingIntent keepIntent = PendingIntent.getBroadcast(context, notificationId(smsId), keep,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new Notification.Builder(context, CHANNEL_ID)
+                ? new Notification.Builder(context, channelIdFor(context, body))
                 : new Notification.Builder(context);
         String name = ContactNames.displayName(context, address);
         builder.setSmallIcon(android.R.drawable.sym_action_chat)
@@ -72,6 +75,14 @@ final class NotificationHelper {
         Bitmap face = ContactNames.photo(context, address);
         if (face != null) builder.setLargeIcon(face);
         manager.notify(notificationId(smsId), builder.build());
+    }
+
+    /** Channel per classifier category: each one carries its own sound in Android settings. */
+    private static String channelIdFor(Context context, String body) {
+        MessageClassifier.Result result = MessageClassifier.classify(context, body);
+        if (MessageClassifier.LABEL_IMPORTANT.equals(result.label)) return CHANNEL_IMPORTANT_ID;
+        if (MessageClassifier.LABEL_SPAM.equals(result.label)) return CHANNEL_SPAM_ID;
+        return CHANNEL_ID;
     }
 
     /** Posts a privacy-preserving status notification after an automatic SMS deletion. */
@@ -324,9 +335,17 @@ final class NotificationHelper {
     private static void createChannels(NotificationManager manager) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel incoming = new NotificationChannel(CHANNEL_ID,
-                    "SMS entrantes", NotificationManager.IMPORTANCE_DEFAULT);
-            incoming.setDescription("Avisos temporales de SMS entrantes");
+                    "SMS entrantes (normales)", NotificationManager.IMPORTANCE_DEFAULT);
+            incoming.setDescription("Avisos temporales de SMS entrantes normales, con su propio sonido");
             manager.createNotificationChannel(incoming);
+            NotificationChannel important = new NotificationChannel(CHANNEL_IMPORTANT_ID,
+                    "SMS importantes", NotificationManager.IMPORTANCE_HIGH);
+            important.setDescription("Mensajes marcados como importantes: sonido propio, más visibles");
+            manager.createNotificationChannel(important);
+            NotificationChannel spam = new NotificationChannel(CHANNEL_SPAM_ID,
+                    "Posible spam", NotificationManager.IMPORTANCE_LOW);
+            spam.setDescription("Silencioso por defecto; puedes darle su propio sonido");
+            manager.createNotificationChannel(spam);
             NotificationChannel deleted = new NotificationChannel(DELETION_CHANNEL_ID,
                     "SMS eliminados", NotificationManager.IMPORTANCE_DEFAULT);
             deleted.setDescription("Avisos después de eliminar un SMS temporal automáticamente");

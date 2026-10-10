@@ -23,6 +23,7 @@ final class AppState {
     private static final String KEY_WATCH_MINUTES = "watch_default_minutes";
     private static final String KEY_HELP_SHOWN_VERSION = "help_shown_version";
     private static final String KEY_NOTES_VISIBLE = "settings_notes_visible";
+    private static final String KEY_UI_SCALE = "ui_scale";
     /** Appearance modes. */
     static final int THEME_LIGHT = 0;
     static final int THEME_DARK = 1;
@@ -193,6 +194,17 @@ final class AppState {
         if (cleaned.isEmpty()) editor.remove(KEY_SIM_NUMBER_PREFIX + subscriptionId);
         else editor.putString(KEY_SIM_NUMBER_PREFIX + subscriptionId, cleaned);
         editor.apply();
+    }
+
+    /** User-chosen interface scale (1 = design size); clamped for safety. */
+    static float uiScale(Context context) {
+        float scale = prefs(context).getFloat(KEY_UI_SCALE, 1f);
+        if (scale < 0.7f || scale > 2f) return 1f;
+        return scale;
+    }
+
+    static void setUiScale(Context context, float scale) {
+        prefs(context).edit().putFloat(KEY_UI_SCALE, scale).apply();
     }
 
     /** Ringer watch: prompt when another app or the system silences the phone. */

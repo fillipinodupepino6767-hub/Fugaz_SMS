@@ -53,6 +53,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
     private Button privButton;
     private Button changePinButton;
     private Button bioButton;
+    private Button sizeButton;
     private ScrollView scroll;
     private final Map<String, View> helpAnchors = new HashMap<>();
     private final List<TextView> notes = new ArrayList<>();
@@ -364,6 +365,10 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
             Toast.makeText(this, "Notificación de prueba enviada.", Toast.LENGTH_SHORT).show();
         });
         root.addView(testSound);
+        root.addView(noteText("El sonido se elige POR CATEGORÍA en los ajustes de Android: "
+                + "Apps → Fugaz SMS → Notificaciones → «SMS importantes», «SMS entrantes "
+                + "(normales)» o «Posible spam»; cada una guarda su propio sonido (el spam "
+                + "nace silencioso)."));
 
                 TextView anchor_google = sectionTitle("Google Mensajes y RCS");
         helpAnchors.put("google", anchor_google);
@@ -421,6 +426,9 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         themeButton = actionButton("");
         themeButton.setOnClickListener(v -> showThemePicker());
         root.addView(themeButton);
+        sizeButton = actionButton("");
+        sizeButton.setOnClickListener(v -> UiScale.showPicker(this, this::recreate));
+        root.addView(sizeButton);
 
                 root.addView(sectionTitle("Privacidad"));
         privButton = actionButton("");
@@ -656,6 +664,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         contactsButton.setText("CONTACTOS (VER NOMBRES Y FOTOS): "
                 + (SetupHelper.hasContactsPermission(this) ? "ACTIVADOS" : "SIN PERMISO (TOCA PARA PEDIRLO)"));
         themeButton.setText("APARIENCIA: " + AppState.themeLabel(this).toUpperCase());
+        sizeButton.setText("TAMAÑO DE INTERFAZ: " + UiScale.label(this).toUpperCase());
         watchButton.setText("VIGILAR SILENCIO DE OTRAS APPS: "
                 + (AppState.watchRinger(this) ? "SÍ" : "NO"));
         watchTimeButton.setText("TIEMPO AUTOMÁTICO: "
