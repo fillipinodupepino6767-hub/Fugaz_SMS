@@ -141,7 +141,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
             if (out == null) throw new java.io.IOException("sin flujo de escritura");
             out.write(SettingsPort.exportJson(this)
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            Toast.makeText(this, "Ajustes exportados \u2713", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Copia completa guardada \u2713", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "No se pudo exportar: " + e.getMessage(),
                     Toast.LENGTH_LONG).show();
@@ -157,7 +157,15 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
             while ((read = in.read(chunk)) != -1) buffer.write(chunk, 0, read);
             int applied = SettingsPort.importJson(this,
                     new String(buffer.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
-            Toast.makeText(this, "Ajustes importados \u2713 (" + applied + " valores)",
+            // Re-arm what the restored stores left pending (same as after a reboot).
+            long now = System.currentTimeMillis();
+            for (java.util.Map.Entry<Long, Long> entry : DeleteRegistry.all(this).entrySet()) {
+                DeleteScheduler.schedule(this, entry.getKey(),
+                        Math.max(now + 1_000L, entry.getValue()));
+            }
+            DeletionLog.pruneExpired(this);
+            HistoryExpiryScheduler.scheduleNext(this);
+            Toast.makeText(this, "Copia importada \u2713 (" + applied + " valores)",
                     Toast.LENGTH_LONG).show();
             if (AppState.watchRinger(this) || RingerTimer.isArmed(this)) {
                 RingerWatchService.ensureRunning(this);
@@ -427,12 +435,12 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(bioButton);
 
         root.addView(sectionTitle("Datos"));
-        Button export = actionButton("EXPORTAR AJUSTES (ARCHIVO)");
+        Button export = actionButton("EXPORTAR COPIA COMPLETA (ARCHIVO)");
         export.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
                     .addCategory(Intent.CATEGORY_OPENABLE)
                     .setType("application/json")
-                    .putExtra(Intent.EXTRA_TITLE, "fugaz-sms-ajustes.json");
+                    .putExtra(Intent.EXTRA_TITLE, "fugaz-sms-copia-completa.json");
             try {
                 startActivityForResult(intent, REQUEST_EXPORT);
             } catch (Exception failed) {
@@ -441,7 +449,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
             }
         });
         root.addView(export);
-        Button importBtn = actionButton("IMPORTAR AJUSTES");
+        Button importBtn = actionButton("IMPORTAR COPIA COMPLETA");
         importBtn.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
                     .addCategory(Intent.CATEGORY_OPENABLE)
@@ -454,6 +462,11 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
             }
         });
         root.addView(importBtn);
+        root.addView(noteText("La copia completa guarda TODO en un archivo: ajustes, "
+                + "tema, bloqueados, palabras clave, PIN y huella, ARCHIVADOS, "
+                + "ELIMINADOS RECIENTEMENTE y temporizadores pendientes. Al importarla "
+                + "en el mismo teléfono (o tras restaurar también los SMS del sistema) "
+                + "todo vuelve a su sitio y los borrados pendientes se reprograman."));
 
         TextView anchor_ayuda = sectionTitle("Ayuda");
         helpAnchors.put("ayuda", anchor_ayuda);
@@ -527,11 +540,12 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
     }
 
     /**
-     * Highlight that is darker than the background but lighter than the text
-     * and deliberately not the blue accent: amber (light) / bronze (dark).
+     * Highlight per theme: light keeps the v27.4 amber; dark goes back to the
+     * celeste (sent-bubble blue) used before v27.4, because the bronze was
+     * barely visible on the dark background.
      */
     private int highlightColor() {
-        return dark ? android.graphics.Color.rgb(83, 62, 18)
+        return dark ? ThemeColors.sentBubble(true)
                     : android.graphics.Color.rgb(255, 179, 0);
     }
 

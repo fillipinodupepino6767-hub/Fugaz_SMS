@@ -52,6 +52,7 @@ final class RingerTimer {
                 .putLong(KEY_RESTORE_AT, restoreAt)
                 .putBoolean(KEY_EXTERNAL_NOTED, false)
                 .apply();
+        NotificationHelper.cancelExternalNote(context);
         noteSelfChange(context);
         schedule(context, restoreAt);
         // While the countdown runs the watcher must watch even if the user
@@ -97,9 +98,10 @@ final class RingerTimer {
     /** Stops the timer. The phone stays as it is; the user un-silences manually. */
     static void cancel(Context context) {
         prefs(context).edit().remove(KEY_RESTORE_AT).apply();
-        // Countdown over or cancelled: if the optional watch is off, the
-        // watcher service has no more reason to run.
-        if (!AppState.watchRinger(context)) {
+        NotificationHelper.cancelExternalNote(context);
+        // Countdown over or cancelled: if the optional watch is off and no
+        // "atento" note is pending, the watcher service has no reason to run.
+        if (!AppState.watchRinger(context) && !externalNoted(context)) {
             RingerWatchService.setEnabled(context, false);
         }
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);

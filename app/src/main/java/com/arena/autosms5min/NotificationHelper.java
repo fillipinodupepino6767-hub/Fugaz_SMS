@@ -24,6 +24,7 @@ final class NotificationHelper {
     private static final int WATCH_ARM_CODE = 610031;
     private static final int WATCH_OPEN_CODE = 610032;
     private static final int EXTERNAL_RESTORE_ID = 610033;
+    private static final int NOTE_DISMISS_CODE = 610034;
 
     private NotificationHelper() { }
 
@@ -245,16 +246,30 @@ final class NotificationHelper {
      * the countdown keeps waiting and the end-of-timer message is suppressed
      * later if everything is still active.
      */
+    /**
+     * "You turned the sound back on yourself": the countdown was stopped, so
+     * this note offers one-tap re-silencing with the configured time and stays
+     * attentive (swiping it away drops the atento state via deleteIntent).
+     */
     static void showExternalRestoreNote(Context context) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
         createChannels(manager);
         manager.cancel(WATCH_ARMED_ID); // the "vuelve a las X" confirmation is stale now
-        String message = "Parece que activaste solo el sonido. "
-                + "Estoy a la espera de cuando lo desactives.";
+        String label = AppState.watchMinutesLabel(context);
+        String message = "Parece que activaste el sonido de notificación. El temporizador "
+                + "se detuvo y estoy atento para cuando lo vuelvas a desactivar.";
         Intent open = new Intent(context, SilenceTimerActivity.class);
         PendingIntent openIntent = PendingIntent.getActivity(context, WATCH_OPEN_CODE, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent rearm = new Intent(context, RingerWatchActionReceiver.class)
+                .setAction(RingerWatchActionReceiver.ACTION_REARM_FROM_NOTE);
+        PendingIntent rearmIntent = PendingIntent.getBroadcast(context, WATCH_ARM_CODE, rearm,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent dismissed = new Intent(context, RingerWatchActionReceiver.class)
+                .setAction(RingerWatchActionReceiver.ACTION_NOTE_DISMISSED);
+        PendingIntent dismissedIntent = PendingIntent.getBroadcast(context, NOTE_DISMISS_CODE,
+                dismissed, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? new Notification.Builder(context, WATCH_PROMPT_CHANNEL_ID)
                 : new Notification.Builder(context);
@@ -263,10 +278,21 @@ final class NotificationHelper {
                 .setContentText(message)
                 .setStyle(new Notification.BigTextStyle().bigText(message))
                 .setContentIntent(openIntent)
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_menu_save,
+                        "SILENCIAR Y ACTIVAR (" + label.toUpperCase() + ")", rearmIntent).build())
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_menu_edit, "ELEGIR TIEMPO", openIntent).build())
+                .setDeleteIntent(dismissedIntent)
                 .setAutoCancel(true)
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setWhen(System.currentTimeMillis());
         manager.notify(EXTERNAL_RESTORE_ID, builder.build());
+    }
+
+    static void cancelExternalNote(Context context) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) manager.cancel(EXTERNAL_RESTORE_ID);
     }
 
     /** Quiet persistent notification required while the ringer watch service runs. */

@@ -3,6 +3,44 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.27.9 (v27.9)
+
+- **El temporizador se detiene si reactivas el sonido por fuera:** con la
+  cuenta atrás en marcha, si el sonido vuelve por fuera de la app (botones,
+  ajustes u otra app), el temporizador se **cancela** en vez de quedar
+  «esperando» como si siguiera en silencio, y llega el aviso «Parece que
+  activaste el sonido de notificación. El temporizador se detuvo y estoy
+  atento para cuando lo vuelvas a desactivar».
+- **Desde el nuevo aviso se reactiva todo:** trae las acciones **SILENCIAR Y
+  ACTIVAR (tu tiempo)** —silencia el teléfono y arma el temporizador con el
+  tiempo configurado, de un toque— y **ELEGIR TIEMPO** (abre la pantalla del
+  temporizador). Deslizar el aviso fuera descarta el estado «atento».
+- **Sin notificaciones innecesarias:** con el temporizador cancelado ya no
+  llega el aviso de «sonido restaurado» al terminar con el sonido ya activo,
+  y si la vigilancia opcional está apagada el servicio de vigilancia se
+  detiene (su aviso permanente desaparece).
+- **Atento de verdad:** mientras el aviso está presente la vigilancia sigue
+  viva aunque el interruptor opcional esté apagado; si vuelves a silenciar el
+  teléfono, llega el aviso de activación de un toque como siempre.
+
+## Novedades de la versión 0.27.8 (v27.8)
+
+- **Color de resaltado por tema:** en tema claro la guía sigue señalando con
+  el fondo ámbar; en tema oscuro vuelve al **celeste** de antes de v27.4
+  (el bronce apenas se distinguía sobre el fondo oscuro). Cada tema tiene su
+  propio color de señal.
+- **Copia completa de todo (Datos):** EXPORTAR/IMPORTAR COPIA COMPLETA
+  (antes «ajustes») ahora guarda también los ARCHIVADOS, los ELIMINADOS
+  RECIENTEMENTE y los temporizadores pendientes (borrado automático y
+  temporizador de silencio), además de ajustes, tema, bloqueados, palabras
+  clave, PIN y huella. Al importar, los borrados pendientes se reprograman
+  solos. Los archivados/eliminados viajan como referencias a los SMS del
+  sistema: vuelven a su sitio en el mismo teléfono o tras restaurar también
+  esos SMS.
+- **Detalles:** textos y avisos de la copia más explícitos, nombre de archivo
+  sugerido `fugaz-sms-copia-completa.json`, y limpieza de una clave muerta
+  (`help_last_step`) en el exportador.
+
 ## Novedades de la versión 0.27.7 (v27.7)
 
 - **Arreglo: «← Atrás» de la guía ya retrocede.** El botón solo cerraba la

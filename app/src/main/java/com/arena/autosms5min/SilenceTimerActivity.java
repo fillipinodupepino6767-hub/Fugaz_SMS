@@ -194,9 +194,11 @@ public final class SilenceTimerActivity extends Activity {
         long restoreAt = RingerTimer.restoreAt(this);
         if (restoreAt > 0L) {
             if (RingerTimer.soundActive(this)) {
-                // Un-silenced by hand: the countdown is pointless to display.
-                status.setText("Parece que activaste solo el sonido. "
-                        + "Estoy a la espera de cuando lo desactives.");
+                // Un-silenced by hand: the watch stops the countdown as soon as
+                // it sees it; meanwhile showing it would only confuse.
+                status.setText("Parece que activaste el sonido por tu cuenta: el "
+                        + "temporizador se detiene solo y quedo atento para cuando "
+                        + "lo vuelvas a desactivar.");
             } else {
                 String when = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
                         .format(restoreAt);
@@ -204,6 +206,11 @@ public final class SilenceTimerActivity extends Activity {
                         + " (en " + CountdownFormatter.formatHistoryRemaining(restoreAt) + ").");
             }
             cancelButton.setVisibility(View.VISIBLE);
+        } else if (RingerTimer.externalNoted(this)) {
+            status.setText("Parece que activaste el sonido de notificación: el "
+                    + "temporizador se detuvo. Quedo atento para cuando lo vuelvas a "
+                    + "desactivar; desde el aviso puedes silenciar y activar de un toque.");
+            cancelButton.setVisibility(View.GONE);
         } else {
             status.setText("No hay temporizador activo.");
             cancelButton.setVisibility(View.GONE);

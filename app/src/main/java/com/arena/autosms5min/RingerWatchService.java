@@ -49,7 +49,8 @@ public final class RingerWatchService extends Service {
 
     /** Restart after process/service death without spamming start commands. */
     static void ensureRunning(Context context) {
-        if (!AppState.watchRinger(context) && !RingerTimer.isArmed(context)) return;
+        if (!AppState.watchRinger(context) && !RingerTimer.isArmed(context)
+                && !RingerTimer.externalNoted(context)) return;
         if (running) return;
         setEnabled(context, true);
     }
@@ -122,8 +123,10 @@ public final class RingerWatchService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Runs with the optional watch on, or while a countdown needs watching.
-        if (!AppState.watchRinger(this) && !RingerTimer.isArmed(this)) {
+        // Runs with the optional watch on, while a countdown needs watching,
+        // or while the "atento" note waits for a re-silence.
+        if (!AppState.watchRinger(this) && !RingerTimer.isArmed(this)
+                && !RingerTimer.externalNoted(this)) {
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -168,30 +171,34 @@ public final class RingerWatchService extends Service {
         int mode = audio == null ? AudioManager.RINGER_MODE_NORMAL : audio.getRingerMode();
         int last = RingerTimer.lastSeenMode(context);
         RingerTimer.setLastSeenMode(context, mode);
-        // Countdown running: sound back on by hand → note it once and keep
-        // waiting (the restore at the end becomes a no-op if still active).
+        // Countdown running and the sound came back by hand: stop the timer
+        // (nothing left to restore) and switch to the "atento" note.
         if (RingerTimer.isArmed(context)) {
-            if (mode == AudioManager.RINGER_MODE_NORMAL) {
+            if (mode == AudioManager.RINGER_MODE_NORMAL
+                    && RingerTimer.currentZen(context) == 0) {
                 NotificationHelper.cancelWatchPrompt(context);
-                if (RingerTimer.currentZen(context) == 0) {
-                    noteExternalRestore(context);
-                }
+                externalSoundOn(context);
             }
             return;
         }
-        if (!AppState.watchRinger(context)) return;
-        // Only fresh normal -> silent/vibrate transitions prompt. Returning to
-        // normal dismisses any pending prompt instead of nagging.
         if (mode == AudioManager.RINGER_MODE_NORMAL) {
             NotificationHelper.cancelWatchPrompt(context);
             return;
         }
+        // Fresh normal -> silent/vibrate transition: prompt with the optional
+        // watch on, or while the "atento" note waits for a re-silence.
+        boolean atento = RingerTimer.externalNoted(context);
+        if (!AppState.watchRinger(context) && !atento) return;
         if (last != AudioManager.RINGER_MODE_NORMAL) return;
         if (System.currentTimeMillis() - RingerTimer.selfChangeAt(context) < SELF_CHANGE_WINDOW_MS) {
             return;
         }
+        RingerTimer.setExternalNoted(context, false);
         NotificationHelper.showRingerWatchPrompt(context,
                 mode == AudioManager.RINGER_MODE_VIBRATE);
+        if (!AppState.watchRinger(context)) {
+            setEnabled(context, false); // the prompt works without the service
+        }
     }
 
     /** Rising edge of No Molestar (zen 0 -> on) prompts, same as silent mode. */
@@ -201,23 +208,32 @@ public final class RingerWatchService extends Service {
         RingerTimer.setLastSeenZen(context, zen);
         boolean armed = RingerTimer.isArmed(context);
         boolean watch = AppState.watchRinger(context);
-        if (!armed && !watch) return;
+        boolean atento = RingerTimer.externalNoted(context);
+        if (!armed && !watch && !atento) return;
         if (zen == 0) {
             NotificationHelper.cancelWatchPrompt(context);
             // DND lifted by hand while counting down: same external note.
             if (armed && RingerTimer.soundActive(context)) {
-                noteExternalRestore(context);
+                externalSoundOn(context);
             }
             return;
         }
-        if (!watch || last != 0 || armed) return;
+        if ((!watch && !atento) || last != 0 || armed) return;
+        RingerTimer.setExternalNoted(context, false);
         NotificationHelper.showDndWatchPrompt(context);
+        if (!watch) setEnabled(context, false);
     }
 
-    /** "Seems you turned the sound back on yourself; waiting for you to stop it." */
-    static void noteExternalRestore(Context context) {
-        if (RingerTimer.externalNoted(context)) return;
+    /**
+     * Sound came back by hand while counting down: stop the timer (there is
+     * nothing left to restore), tell the user, and stay "atento" — the service
+     * keeps watching for a re-silence even with the optional watch off, and
+     * the note offers one-tap re-silencing with the configured time.
+     */
+    static void externalSoundOn(Context context) {
         RingerTimer.setExternalNoted(context, true);
+        RingerTimer.cancel(context);
         NotificationHelper.showExternalRestoreNote(context);
+        ensureRunning(context);
     }
 }
