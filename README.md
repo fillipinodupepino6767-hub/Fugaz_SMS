@@ -3,6 +3,22 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.5 (v28.5)
+
+- **Atajo para volver al tamaño 100 % con toques al fondo:** si la bandeja se
+  queda muy grande (por ejemplo en 150 %), ya no hace falta buscar el botón
+  «Aa TAMAÑO»: toca el **fondo de la pantalla inicial 8 veces seguidas** (en
+  unos segundos, sin tocar mensajes ni botones) y la app pregunta «¿La
+  restablezco al 100 % (el tamaño con el que empiezan todos los teléfonos)?».
+  Al confirmar, la interfaz vuelve al tamaño de fábrica al instante. Solo
+  cambia el tamaño: no se borran mensajes ni se toca ninguna otra
+  configuración. Si ya estás en el 100 %, el atajo solo te lo confirma con un
+  aviso.
+- **Guía ampliada a 10 ventanitas:** el mensaje 10 («🔁 Volver al tamaño
+  100 % (atajo)») explica el gesto y la otra vía (el botón «Aa TAMAÑO» de la
+  bandeja, o «TAMAÑO DE INTERFAZ» en Configuración → Apariencia, con «Usar
+  100 % (predeterminado)»); la bienvenida ya dice 10 ventanitas.
+
 ## Novedades de la versión 0.28.4 (v28.4)
 
 - **Deslizador de tamaño con rango seguro (70 %–150 %):** el botón «Aa TAMAÑO»
