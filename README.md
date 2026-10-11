@@ -3,6 +3,22 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.4 (v28.4)
+
+- **Deslizador de tamaño con rango seguro (70 %–150 %):** el botón «Aa TAMAÑO»
+  (bandeja y Configuración → Apariencia) ya no permite bajar al 40 % ni subir
+  al 200 %. Los extremos anteriores dejaban la interfaz inservible en algunos
+  teléfonos (letras cortadas, botones amontonados o todo fuera de la
+  pantalla), así que ahora el deslizador se mueve solo entre **70 % y 150 %**,
+  que es donde la app se ve bien de verdad. El diálogo lo explica como «rango
+  seguro» y conserva los botones de −1 % / +1 %, la vista previa en vivo y el
+  atajo «Usar 100 % (predeterminado)».
+- **Auto-reparación de un tamaño extremo guardado:** si el teléfono quedó con
+  un tamaño guardado fuera de 70 %–150 % (por ejemplo, elegido con la versión
+  anterior), al abrir la app vuelve **solo al 100 %** y lo corrige en los
+  ajustes. No se borra ninguna otra configuración ni ningún mensaje: solo se
+  repara ese valor.
+
 ## Novedades de la versión 0.28.3 (v28.3)
 
 - **Tamaño fijo predeterminado en todos los teléfonos:** la interfaz ya no

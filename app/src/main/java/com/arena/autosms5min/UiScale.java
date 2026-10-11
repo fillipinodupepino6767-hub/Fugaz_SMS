@@ -11,15 +11,16 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 /**
- * Interface size chosen by the person: a slider from 40 % to 200 % over the
- * app's own default. Every phone starts at 100 % (the app ignores the system
- * font size and display-size settings) and this picker is the only thing that
- * changes it. The dialog shows the exact percentage and a live preview while
- * the slider moves; applying recreates the screen underneath.
+ * Interface size chosen by the person: a slider from 70 % to 150 % (the safe
+ * range) over the app's own default. Every phone starts at 100 % (the app
+ * ignores the system font size and display-size settings) and this picker is
+ * the only thing that changes it. The dialog shows the exact percentage and a
+ * live preview while the slider moves; applying recreates the screen
+ * underneath.
  */
 final class UiScale {
-    static final int MIN_PERCENT = 40;
-    static final int MAX_PERCENT = 200;
+    static final int MIN_PERCENT = 70;
+    static final int MAX_PERCENT = 150;
     static final int DEFAULT_PERCENT = 100;
 
     private UiScale() { }
@@ -40,7 +41,8 @@ final class UiScale {
         LinearLayout card = ThemedDialog.card(activity, dialog, "Tamaño de la interfaz",
                 "Todos los teléfonos empiezan con el mismo tamaño (100 %): la app ya no "
                         + "sigue el tamaño de letra ni el tamaño de pantalla del teléfono. "
-                        + "Mueve el deslizador para elegir del 40 % al 200 % y mira la vista "
+                        + "Mueve el deslizador para elegir del 70 % al 150 % (rango seguro: "
+                        + "así la interfaz se ve bien en cualquier teléfono) y mira la vista "
                         + "previa. Al aplicar, cambia toda la app al instante.");
 
         // Big percentage readout with fine -1 % / +1 % buttons around it.
