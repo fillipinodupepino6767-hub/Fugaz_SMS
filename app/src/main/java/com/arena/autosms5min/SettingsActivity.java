@@ -520,7 +520,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.28.3 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.28.4 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         Ui.text(footer, 13f);
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);

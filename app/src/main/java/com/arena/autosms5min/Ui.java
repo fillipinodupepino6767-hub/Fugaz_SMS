@@ -12,7 +12,7 @@ import android.widget.TextView;
  * longer follows the system font size or the "display size" setting, and no
  * longer auto-boosts small screens. Every screen is designed for a 360 dp wide
  * phone and scaled with the person's own choice ({@link AppState#uiScale},
- * the 40 %–200 % slider in {@link UiScale}); 100 % is the default everywhere.
+ * the 70 %–150 % slider in {@link UiScale}); 100 % is the default everywhere.
  *
  * <p>Layout uses "design dp" and text uses "design sp"; both convert to pixels
  * through the same {@linkplain #stableDensity}, so system settings cannot grow
