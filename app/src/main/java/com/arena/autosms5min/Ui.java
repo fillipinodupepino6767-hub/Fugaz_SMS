@@ -8,38 +8,73 @@ import android.widget.Button;
 import android.widget.TextView;
 
 /**
- * Shared sizing so the UI stays readable on small phones and when the user
- * enlarges system text. Text uses SP (honours fontScale); layout uses DP.
- * On narrow screens the design SP is boosted a little so options do not look tiny.
+ * Shared sizing so the interface looks the SAME on every phone: the app no
+ * longer follows the system font size or the "display size" setting, and no
+ * longer auto-boosts small screens. Every screen is designed for a 360 dp wide
+ * phone and scaled with the person's own choice ({@link AppState#uiScale},
+ * the 40 %–200 % slider in {@link UiScale}); 100 % is the default everywhere.
+ *
+ * <p>Layout uses "design dp" and text uses "design sp"; both convert to pixels
+ * through the same {@linkplain #stableDensity}, so system settings cannot grow
+ * or shrink one without the other.
  */
 final class Ui {
+    /** Width the whole interface is designed for; 100 % spans exactly this. */
+    private static final float DESIGN_WIDTH_DP = 360f;
+
+    // Cache: density is requested for every view; recomputed only when the
+    // visible screen changes (rotation keeps the smallest side, so no churn).
+    private static int cachedSmallestPx = -1;
+    private static float cachedDensity = -1f;
+
     private Ui() { }
 
+    /**
+     * Pixels per design dp: the screen's smallest side in real pixels divided
+     * by the design width. Real pixels do not change when the person tweaks
+     * the phone's font size or display size, so this density is stable.
+     */
+    static float stableDensity(Context context) {
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        int smallestPx = Math.min(metrics.widthPixels, metrics.heightPixels);
+        if (smallestPx != cachedSmallestPx) {
+            cachedSmallestPx = smallestPx;
+            cachedDensity = Math.max(1, smallestPx) / DESIGN_WIDTH_DP;
+        }
+        return cachedDensity;
+    }
+
+    /** Design dp → pixels at the person's current interface scale. */
     static int dp(Context context, float value) {
-        float density = context.getResources().getDisplayMetrics().density;
-        return Math.round(value * density * AppState.uiScale(context));
+        return dp(context, value, AppState.uiScale(context));
+    }
+
+    /** Design dp → pixels at an explicit scale (live slider preview). */
+    static int dp(Context context, float value, float scale) {
+        return Math.round(value * stableDensity(context) * scale);
+    }
+
+    /** Design text size → pixels at the person's current interface scale. */
+    static float textPx(Context context, float designSp) {
+        return textPx(context, designSp, AppState.uiScale(context));
+    }
+
+    /** Design text size → pixels at an explicit scale (live slider preview). */
+    static float textPx(Context context, float designSp, float scale) {
+        return designSp * stableDensity(context) * scale;
     }
 
     /**
-     * Design size in SP, with a mild boost on narrow phones. {@link TextView#setTextSize(float)}
-     * already multiplies by the user fontScale; this only adjusts the base design size.
+     * Applies the design text size in pixels. Using PX (not SP) is what keeps
+     * the system font size out of the app; the slider is the only multiplier.
      */
-    static float sp(Context context, float designSp) {
-        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-        float widthDp = metrics.widthPixels / Math.max(0.5f, metrics.density);
-        float boost = 1f;
-        if (widthDp < 340f) boost = 1.18f;
-        else if (widthDp < 380f) boost = 1.12f;
-        else if (widthDp < 420f) boost = 1.06f;
-        float fontScale = context.getResources().getConfiguration().fontScale;
-        // User already enlarged text: keep layout usable.
-        if (fontScale >= 1.35f) boost = Math.min(boost, 1.04f);
-        else if (fontScale >= 1.15f) boost = Math.min(boost, 1.08f);
-        return designSp * boost * AppState.uiScale(context);
+    static void text(TextView view, float designSp) {
+        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx(view.getContext(), designSp));
     }
 
-    static void text(TextView view, float designSp) {
-        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp(view.getContext(), designSp));
+    /** Preview variant: sizes the view at a scale that is not saved yet. */
+    static void text(TextView view, float designSp, float scale) {
+        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx(view.getContext(), designSp, scale));
     }
 
     /** Shared look for the big settings / action buttons across screens. */

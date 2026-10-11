@@ -61,6 +61,7 @@ public final class ArchivedActivity extends Activity {
         root.addView(toolbar);
 
         subtitle = new TextView(this);
+        Ui.text(subtitle, 13f);
         subtitle.setTextColor(ThemeColors.secondaryText(dark));
         subtitle.setPadding(dp(4), 0, dp(4), dp(4));
         root.addView(subtitle);

@@ -142,6 +142,7 @@ public final class ConversationActivity extends Activity {
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button clearSearch = new Button(this);
         clearSearch.setText("✕");
+        Ui.text(clearSearch, 16f);
         clearSearch.setTextColor(ThemeColors.accent(dark));
         clearSearch.setContentDescription("Limpiar búsqueda");
         clearSearch.setBackgroundColor(android.graphics.Color.TRANSPARENT);
@@ -170,6 +171,7 @@ public final class ConversationActivity extends Activity {
         composer.setGravity(Gravity.CENTER_VERTICAL);
         EditText text = new EditText(this);
         text.setHint("Escribe un SMS");
+        Ui.text(text, 16f);
         text.setHintTextColor(ThemeColors.secondaryText(dark));
         text.setTextColor(ThemeColors.primaryText(dark));
         text.setMinLines(1);
@@ -177,6 +179,7 @@ public final class ConversationActivity extends Activity {
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button send = new Button(this);
         send.setText("ENVIAR");
+        Ui.text(send, 15f);
         send.setAllCaps(false);
         send.setTextColor(ThemeColors.accent(dark));
         send.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
@@ -219,6 +222,7 @@ public final class ConversationActivity extends Activity {
     private Button secondaryButton(String text) {
         Button button = new Button(this);
         button.setText(text);
+        Ui.text(button, 15f);
         button.setAllCaps(false);
         button.setTextColor(ThemeColors.accent(dark));
         button.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));
@@ -268,6 +272,7 @@ public final class ConversationActivity extends Activity {
                     TextView timer = new TextView(this);
                     timer.setText("⏳ Se elimina aproximadamente en "
                             + CountdownFormatter.formatVerbose(dueAt));
+                    Ui.text(timer, 13f);
                     timer.setTextColor(ThemeColors.accent(dark));
                     timer.setPadding(0, dp(8), 0, 0);
                     card.addView(timer);

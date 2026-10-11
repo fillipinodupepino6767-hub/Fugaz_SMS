@@ -21,8 +21,7 @@ final class ThemeColors {
     static GradientDrawable rounded(android.content.Context context, int color, int radiusDp) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
-        float density = context.getResources().getDisplayMetrics().density;
-        drawable.setCornerRadius(radiusDp * density + .5f);
+        drawable.setCornerRadius(Ui.dp(context, radiusDp));
         return drawable;
     }
 
