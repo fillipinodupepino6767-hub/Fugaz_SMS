@@ -3,10 +3,15 @@ package com.arena.autosms5min;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.telephony.SmsManager;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -21,8 +26,12 @@ import android.widget.Toast;
  * messages are never auto-deleted.
  */
 public final class ComposeActivity extends Activity {
+    private static final int REQUEST_PICK_CONTACT = 710;
     private EditText addressBox;
     private EditText bodyBox;
+    private TextView nameLine;
+    private String pickedName;
+    private boolean applyingPick;
     private boolean dark;
 
     @Override
@@ -58,6 +67,31 @@ public final class ComposeActivity extends Activity {
 
         addressBox = field("Número de destino (ej. 8888-8888)", true);
         card.addView(addressBox);
+        nameLine = new TextView(this);
+        nameLine.setTextColor(ThemeColors.accent(dark));
+        Ui.text(nameLine, 15f);
+        nameLine.setPadding(dp(6), 0, dp(4), dp(2));
+        nameLine.setVisibility(View.GONE);
+        card.addView(nameLine);
+        Button pickContact = new Button(this);
+        pickContact.setText("👤 ELEGIR CONTACTO");
+        Ui.styleActionButton(pickContact, dark);
+        pickContact.setMinHeight(dp(46));
+        Ui.text(pickContact, 14f);
+        pickContact.setOnClickListener(v -> pickContact());
+        LinearLayout.LayoutParams pickParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        pickParams.setMargins(0, 0, 0, dp(6));
+        card.addView(pickContact, pickParams);
+        addressBox.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable s) {
+                if (applyingPick) return;
+                pickedName = null;
+                updateNameLabel();
+            }
+        });
         bodyBox = field("Mensaje", false);
         bodyBox.setMinLines(4);
         bodyBox.setMaxLines(8);
@@ -71,9 +105,12 @@ public final class ComposeActivity extends Activity {
         card.addView(send);
 
         TextView note = new TextView(this);
-        note.setText("El SMS sale por la línea elegida en Configuración (SIMs); si no "
-                + "elegiste ninguna, por la predeterminada del teléfono. Lo enviado queda "
-                + "en la conversación y NO se borra solo.");
+        note.setText("Puedes escribir el número o tocar 👤 ELEGIR CONTACTO: se abre el "
+                + "selector de contactos de Android (incluye los de tu cuenta de Google, "
+                + "con buscador) sin dar permisos nuevos. Si ya diste el permiso de "
+                + "contactos, el nombre aparece solo al escribir el número. El SMS sale "
+                + "por la línea elegida en Configuración (SIMs) y lo enviado queda en la "
+                + "conversación, sin borrado automático.");
         note.setTextColor(ThemeColors.secondaryText(dark));
         Ui.text(note, 14f);
         note.setPadding(dp(4), dp(10), dp(4), 0);
@@ -102,6 +139,59 @@ public final class ComposeActivity extends Activity {
         params.setMargins(0, dp(6), 0, dp(6));
         box.setLayoutParams(params);
         return box;
+    }
+
+    /** System contact picker: phone and Google contacts, no permanent permission. */
+    private void pickContact() {
+        Intent pick = new Intent(Intent.ACTION_PICK)
+                .setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE);
+        try {
+            startActivityForResult(pick, REQUEST_PICK_CONTACT);
+        } catch (Exception failed) {
+            Toast.makeText(this, "Este teléfono no ofrece un selector de contactos.",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_PICK_CONTACT || resultCode != RESULT_OK
+                || data == null || data.getData() == null) return;
+        try (Cursor cursor = getContentResolver().query(data.getData(),
+                new String[] {ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME},
+                null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String rawNumber = cursor.getString(0);
+                pickedName = cursor.getString(1);
+                if (rawNumber != null) {
+                    applyingPick = true;
+                    addressBox.setText(rawNumber.replaceAll("[^0-9+]", ""));
+                    applyingPick = false;
+                }
+            }
+        } catch (Exception ignored) {
+            // Unreadable contact row: manual entry still works.
+        }
+        updateNameLabel();
+    }
+
+    /** Shows who the number belongs to: picked name, or contacts permission. */
+    private void updateNameLabel() {
+        String address = addressBox.getText().toString().trim();
+        if (address.isEmpty()) {
+            nameLine.setVisibility(View.GONE);
+            return;
+        }
+        String label = pickedName != null && !pickedName.isEmpty()
+                ? pickedName : ContactNames.displayName(this, address);
+        if (label == null || label.equals(address)) {
+            nameLine.setVisibility(View.GONE);
+        } else {
+            nameLine.setVisibility(View.VISIBLE);
+            nameLine.setText("👤 " + label);
+        }
     }
 
     private void send() {

@@ -3,6 +3,15 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.1 (v28.1)
+
+- **Elegir contacto al escribir un SMS:** la pantalla «✏️ SMS nuevo» trae el
+  botón **👤 ELEGIR CONTACTO**, que abre el selector de contactos de Android
+  (los del teléfono y los de la cuenta de Google, con buscador) **sin pedir
+  permisos nuevos**: al elegir, el número se carga limpio y se muestra el
+  nombre. Si además ya diste el permiso opcional de contactos, el nombre
+  aparece solo al escribir cualquier número conocido.
+
 ## Novedades de la versión 0.28.0 (v28)
 
 - **✏️ ESCRIBIR SMS:** botón nuevo en la bandeja para redactar y enviar un SMS
