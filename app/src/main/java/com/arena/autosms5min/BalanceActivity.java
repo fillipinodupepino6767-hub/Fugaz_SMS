@@ -79,6 +79,7 @@ public final class BalanceActivity extends Activity {
                 + "normal), o abrimos el menú de la SIM de tu operador."));
 
         status = new TextView(this);
+        Ui.text(status, 15f);
         status.setTextColor(ThemeColors.secondaryText(dark));
         status.setPadding(0, dp(8), 0, dp(8));
         root.addView(status);

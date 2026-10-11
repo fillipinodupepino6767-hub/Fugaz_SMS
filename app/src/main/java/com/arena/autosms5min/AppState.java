@@ -196,10 +196,10 @@ final class AppState {
         editor.apply();
     }
 
-    /** User-chosen interface scale (1 = design size); clamped for safety. */
+    /** User-chosen interface scale (1 = the default every phone starts at); 40 %–200 %. */
     static float uiScale(Context context) {
         float scale = prefs(context).getFloat(KEY_UI_SCALE, 1f);
-        if (scale < 0.7f || scale > 2f) return 1f;
+        if (scale < 0.4f || scale > 2f) return 1f;
         return scale;
     }
 

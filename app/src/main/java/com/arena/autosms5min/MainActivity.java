@@ -295,6 +295,7 @@ public final class MainActivity extends Activity {
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button clearSearch = new Button(this);
         clearSearch.setText("✕");
+        Ui.text(clearSearch, 16f);
         clearSearch.setTextColor(ThemeColors.accent(dark));
         clearSearch.setContentDescription("Limpiar búsqueda");
         clearSearch.setBackgroundColor(android.graphics.Color.TRANSPARENT);
@@ -451,7 +452,7 @@ public final class MainActivity extends Activity {
                         }
                         Paint label = new Paint();
                         label.setColor(Color.WHITE);
-                        label.setTextSize(Ui.dp(MainActivity.this, Ui.sp(MainActivity.this, 16f)));
+                        label.setTextSize(Ui.textPx(MainActivity.this, 16f));
                         label.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
                         String text = delete ? "ELIMINAR" : "ARCHIVAR";
                         float centerY = row.getTop() + row.getHeight() / 2f + dp(6);

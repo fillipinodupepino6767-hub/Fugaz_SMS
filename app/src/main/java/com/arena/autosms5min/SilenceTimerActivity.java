@@ -116,6 +116,7 @@ public final class SilenceTimerActivity extends Activity {
             Button preset = new Button(this);
             preset.setText(value.equals("60") ? "1 h" : value.equals("120") ? "2 h"
                     : value.equals("240") ? "4 h" : value + " min");
+            Ui.text(preset, 16f);
             preset.setAllCaps(false);
             preset.setTextColor(ThemeColors.accent(dark));
             preset.setBackground(ThemeColors.rounded(this, ThemeColors.incomingBubble(dark), 10));

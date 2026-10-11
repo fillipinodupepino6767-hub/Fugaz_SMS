@@ -92,12 +92,14 @@ public final class DeletedHistoryActivity extends Activity {
         root.addView(toolbar);
 
         subtitle = new TextView(this);
+        Ui.text(subtitle, 13f);
         subtitle.setTextColor(ThemeColors.secondaryText(dark));
         subtitle.setPadding(dp(4), 0, dp(4), dp(4));
         root.addView(subtitle);
 
         retention = new Button(this);
         retention.setAllCaps(false);
+        Ui.text(retention, 16f);
         retention.setTextColor(ThemeColors.accent(dark));
         retention.setBackground(roundedBackground(ThemeColors.incomingBubble(dark), 10));
         retention.setGravity(Gravity.CENTER);
@@ -308,6 +310,7 @@ public final class DeletedHistoryActivity extends Activity {
 
         Button cancel = new Button(this);
         cancel.setText("Cancelar");
+        Ui.text(cancel, 16f);
         cancel.setAllCaps(false);
         cancel.setTextColor(ThemeColors.accent(dark));
         cancel.setBackgroundColor(Color.TRANSPARENT);

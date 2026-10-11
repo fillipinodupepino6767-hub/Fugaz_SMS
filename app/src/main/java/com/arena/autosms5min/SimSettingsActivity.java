@@ -65,6 +65,7 @@ public final class SimSettingsActivity extends Activity {
         root.addView(toolbar);
 
         status = new TextView(this);
+        Ui.text(status, 15f);
         status.setTextColor(ThemeColors.secondaryText(dark));
         status.setPadding(0, dp(8), 0, dp(8));
         root.addView(status);
@@ -125,6 +126,7 @@ public final class SimSettingsActivity extends Activity {
         if (active.isEmpty()) {
             TextView none = new TextView(this);
             none.setText("No se detectaron SIM activas.");
+            Ui.text(none, 15f);
             none.setTextColor(ThemeColors.secondaryText(dark));
             cards.addView(none);
             return;

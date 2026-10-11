@@ -189,6 +189,7 @@ final class ThemedDialog {
         LinearLayout card = card(activity, dialog, title, message);
         final EditText field = new EditText(activity);
         field.setInputType(inputType);
+        Ui.text(field, 16f);
         if (initial != null) field.setText(initial);
         field.setTextColor(ThemeColors.primaryText(dark));
         field.setHintTextColor(ThemeColors.secondaryText(dark));
@@ -217,8 +218,8 @@ final class ThemedDialog {
         finish(activity, dialog, card);
     }
 
-    private static Button optionButton(Activity activity, String text, boolean selected,
-                                       android.view.View.OnClickListener listener) {
+    static Button optionButton(Activity activity, String text, boolean selected,
+                               android.view.View.OnClickListener listener) {
         boolean dark = AppState.isDarkMode(activity);
         Button button = new Button(activity);
         button.setAllCaps(false);
@@ -237,7 +238,7 @@ final class ThemedDialog {
         return button;
     }
 
-    private static LinearLayout card(Activity activity, Dialog dialog, String title, String message) {
+    static LinearLayout card(Activity activity, Dialog dialog, String title, String message) {
         boolean dark = AppState.isDarkMode(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         LinearLayout card = new LinearLayout(activity);
@@ -262,7 +263,7 @@ final class ThemedDialog {
         return card;
     }
 
-    private static LinearLayout buttonRow(Activity activity) {
+    static LinearLayout buttonRow(Activity activity) {
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
@@ -274,7 +275,7 @@ final class ThemedDialog {
         return row;
     }
 
-    private static Button textButton(Activity activity, String text, boolean strong) {
+    static Button textButton(Activity activity, String text, boolean strong) {
         boolean dark = AppState.isDarkMode(activity);
         Button button = new Button(activity);
         button.setText(text);
@@ -287,7 +288,7 @@ final class ThemedDialog {
         return button;
     }
 
-    private static void finish(Activity activity, Dialog dialog, LinearLayout card) {
+    static void finish(Activity activity, Dialog dialog, LinearLayout card) {
         finish(activity, dialog, card, false, null);
     }
 
