@@ -112,6 +112,18 @@ final class HelpTour {
                 + "ajustes). Así Android no retrasa el borrado a los 5 minutos ni detiene "
                 + "la vigilancia del sonido cuando el teléfono duerme.",
             "bateria"},
+        {"🔁 Volver al tamaño 100 % (atajo)",
+            "Si la bandeja se ve muy grande (por ejemplo en 150 %) y quieres volver al "
+                + "tamaño de fábrica sin ir buscando botones: en la BANDEJA (la pantalla "
+                + "inicial) toca el FONDO de la pantalla 8 veces seguidas en unos segundos "
+                + "(sin tocar mensajes ni botones) y la app te pregunta si restablece el "
+                + "tamaño al 100 %.\n\n"
+                + "Es solo un atajo rápido y seguro: no se borran mensajes ni se toca "
+                + "ninguna otra configuración; y si ya estás en el 100 %, solo te lo "
+                + "confirma.\n\n"
+                + "La otra forma: el botón «Aa TAMAÑO» de la bandeja (o «TAMAÑO DE "
+                + "INTERFAZ» aquí, en Apariencia) trae «Usar 100 % (predeterminado)».",
+            "apariencia"},
     };
 
     private static final String WELCOME =
@@ -120,7 +132,7 @@ final class HelpTour {
                 + "IMPORTANTE: para recibir mensajes toca ⚙ Configuración → ① CONFIGURACIÓN "
                 + "AUTOMÁTICA y sigue los 5 pasos. Android te pedirá «Permitir ajustes "
                 + "restringidos» (con PIN o huella) si instalaste el APK.\n\n"
-                + "«Ver la guía» abre 9 ventanitas que señalan cada ajuste en Configuración "
+                + "«Ver la guía» abre 10 ventanitas que señalan cada ajuste en Configuración "
                 + "(con ← para volver atrás y ✕ para cerrar). El ❓ de la barra siempre la "
                 + "abre desde la primera ventanita.";
 

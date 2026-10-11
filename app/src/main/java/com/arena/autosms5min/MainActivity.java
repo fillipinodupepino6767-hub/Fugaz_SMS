@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -34,6 +35,12 @@ import java.util.List;
 /** Main inbox: search, swipe to delete/archive like Gmail; everything else lives in Settings. */
 public final class MainActivity extends Activity {
     private static final int REQUEST_SMS_ROLE = 400;
+    /** Eight quick background taps offer the size reset (see onBackgroundTap). */
+    private static final int RESET_TAP_TARGET = 8;
+    /** Taps older than this are dropped: the whole chain must fit the window. */
+    private static final long RESET_TAP_WINDOW_MS = 5_000L;
+    /** A longer pause breaks the chain: the taps have to be "seguidas". */
+    private static final long RESET_TAP_MAX_GAP_MS = 2_000L;
     private final List<SmsStore.SmsItem> shownItems = new ArrayList<>();
     private InboxAdapter adapter;
     private RecyclerView list;
@@ -50,6 +57,8 @@ public final class MainActivity extends Activity {
     private TextView emptyBody;
     private EditText searchBox;
     private Button sizeButton;
+    /** Timestamps (elapsedRealtime) of the current background-tap chain. */
+    private final List<Long> resetTapTimes = new ArrayList<>();
     private String query = "";
     private boolean dark;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
@@ -388,6 +397,7 @@ public final class MainActivity extends Activity {
         root.addView(emptyState, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
+        installSizeResetGesture(root);
         setContentView(root);
     }
 
@@ -619,6 +629,55 @@ public final class MainActivity extends Activity {
         Intent conversation = new Intent(this, ConversationActivity.class)
                 .putExtra(ConversationActivity.EXTRA_ADDRESS, number);
         startActivity(conversation);
+    }
+
+    /**
+     * Hidden helper for when the interface is left too big (150 %): the size
+     * button can be hard to spot, so tapping the inbox BACKGROUND several
+     * times in a row offers to return the size to the 100 % factory default.
+     * Messages and buttons keep their own taps; only empty background areas
+     * fall through here.
+     */
+    private void installSizeResetGesture(View root) {
+        root.setOnClickListener(v -> onBackgroundTap());
+    }
+
+    private void onBackgroundTap() {
+        long now = SystemClock.elapsedRealtime();
+        if (!resetTapTimes.isEmpty()
+                && now - resetTapTimes.get(resetTapTimes.size() - 1) > RESET_TAP_MAX_GAP_MS) {
+            resetTapTimes.clear(); // the person paused: the chain starts over
+        }
+        while (!resetTapTimes.isEmpty()
+                && now - resetTapTimes.get(0) > RESET_TAP_WINDOW_MS) {
+            resetTapTimes.remove(0);
+        }
+        resetTapTimes.add(now);
+        if (resetTapTimes.size() < RESET_TAP_TARGET) return;
+        resetTapTimes.clear();
+        offerSizeReset();
+    }
+
+    private void offerSizeReset() {
+        int percent = UiScale.percent(this);
+        if (percent == UiScale.DEFAULT_PERCENT) {
+            // Nothing to repair: just tell the person they are already there.
+            Toast.makeText(this, "Ya estás en el " + UiScale.DEFAULT_PERCENT
+                    + " % (tamaño de fábrica) ✓", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ThemedDialog.confirm(this, "Volver al tamaño de fábrica",
+                "La interfaz está al " + percent + " %. ¿La restablezco al "
+                        + UiScale.DEFAULT_PERCENT + " % (el tamaño con el que empiezan "
+                        + "todos los teléfonos)?\n\n"
+                        + "Solo cambia el tamaño de la interfaz: no se borran mensajes "
+                        + "ni se toca ninguna otra configuración.",
+                "Cancelar", "Sí, al " + UiScale.DEFAULT_PERCENT + " %", () -> {
+                    AppState.setUiScale(this, UiScale.DEFAULT_PERCENT / 100f);
+                    Toast.makeText(this, "Tamaño restablecido al " + UiScale.DEFAULT_PERCENT
+                            + " % (predeterminado) ✓", Toast.LENGTH_SHORT).show();
+                    recreate();
+                });
     }
 
     private int dp(int value) {
