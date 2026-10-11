@@ -476,6 +476,29 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                 + "en el mismo teléfono (o tras restaurar también los SMS del sistema) "
                 + "todo vuelve a su sitio y los borrados pendientes se reprograman."));
 
+        TextView anchor_bateria = sectionTitle("Batería e internet");
+        helpAnchors.put("bateria", anchor_bateria);
+        root.addView(anchor_bateria);
+        root.addView(noteText("Fugaz SMS NO usa internet: no tiene permiso de red y todo "
+                + "queda en tu teléfono. Los SMS llegan por la señal del operador, así que "
+                + "funciona sin datos móviles ni Wi-Fi; los datos en segundo plano no le "
+                + "hacen falta."));
+        root.addView(noteText("Para algunas funciones SÍ es necesario cuidar la batería: "
+                + "pon la app en «Sin restricciones» / «No optimizar» en los ajustes de "
+                + "Android para que el borrado a los 5 minutos y la vigilancia del sonido "
+                + "no se retrasen cuando el teléfono duerme."));
+        Button batteryButton = actionButton("ABRIR AJUSTES DE BATERÍA DE LA APP");
+        batteryButton.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception failed) {
+                Toast.makeText(this, "No se pudo abrir los ajustes de la app.",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+        root.addView(batteryButton);
+
         TextView anchor_ayuda = sectionTitle("Ayuda");
         helpAnchors.put("ayuda", anchor_ayuda);
         root.addView(anchor_ayuda);
@@ -723,6 +746,10 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                 + "• Nombres de contactos: " + (SetupHelper.hasContactsPermission(this) ? "Sí" : "No (sin permiso)") + "\n"
                 + "• Último SMS recibido: " + last + "\n"
                 + "• Borrados programados: " + pending + " pendiente(s)\n"
+                + "• Internet: NO necesario (la app no tiene permiso de red; los SMS "
+                + "llegan por la señal del operador y todo queda en tu teléfono)\n"
+                + "• Batería: conviene «Sin restricciones» / «No optimizar» para que el "
+                + "borrado y la vigilancia del sonido no se retrasen\n"
                 + "• Borrado: " + AppState.retentionLabel(this)
                 + " · Normal:" + yesNo(AppState.shouldDeleteNormal(this))
                 + " Spam:" + yesNo(AppState.shouldDeleteSpam(this))

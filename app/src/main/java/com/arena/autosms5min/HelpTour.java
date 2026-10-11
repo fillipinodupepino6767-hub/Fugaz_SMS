@@ -102,6 +102,16 @@ final class HelpTour {
                 + "606 · Claro *611#.\n\n"
                 + "Todo queda local en tu teléfono: sin cuentas, sin internet, sin publicidad.",
             "saldo"},
+        {"🔋 Batería e internet",
+            "Aquí detrás, en BATERÍA E INTERNET, está explicado: Fugaz SMS NO usa "
+                + "internet (no tiene permiso de red): los SMS llegan por la señal del "
+                + "operador y todo queda en tu teléfono, así que los datos en segundo "
+                + "plano no le hacen falta.\n\n"
+                + "Lo que SÍ conviene para algunas funciones: pon su batería en «Sin "
+                + "restricciones» / «No optimizar» (el botón de esa sección abre esos "
+                + "ajustes). Así Android no retrasa el borrado a los 5 minutos ni detiene "
+                + "la vigilancia del sonido cuando el teléfono duerme.",
+            "bateria"},
     };
 
     private static final String WELCOME =
@@ -110,7 +120,7 @@ final class HelpTour {
                 + "IMPORTANTE: para recibir mensajes toca ⚙ Configuración → ① CONFIGURACIÓN "
                 + "AUTOMÁTICA y sigue los 5 pasos. Android te pedirá «Permitir ajustes "
                 + "restringidos» (con PIN o huella) si instalaste el APK.\n\n"
-                + "«Ver la guía» abre 8 ventanitas que señalan cada ajuste en Configuración "
+                + "«Ver la guía» abre 9 ventanitas que señalan cada ajuste en Configuración "
                 + "(con ← para volver atrás y ✕ para cerrar). El ❓ de la barra siempre la "
                 + "abre desde la primera ventanita.";
 

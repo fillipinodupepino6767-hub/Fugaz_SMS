@@ -3,6 +3,18 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.2 (v28.2)
+
+- **Sección «Batería e internet» en Configuración** con los dos mensajes:
+  (1) la app NO usa internet (sin permiso de red; los SMS llegan por la señal
+  del operador, los datos en segundo plano no le hacen falta) y (2) para
+  algunas funciones es necesario poner la batería en «Sin restricciones» /
+  «No optimizar», con un botón que abre directo esos ajustes de Android.
+- **Ventanita 9 de la guía:** «🔋 Batería e internet» al final del recorrido,
+  que lleva a esa sección y la resalta; la bienvenida ya dice 9 ventanitas.
+- **Diagnóstico de recepción** añade dos líneas: internet no necesario y el
+  consejo de batería sin optimizar.
+
 ## Novedades de la versión 0.28.1 (v28.1)
 
 - **Elegir contacto al escribir un SMS:** la pantalla «✏️ SMS nuevo» trae el
