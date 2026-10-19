@@ -25,6 +25,7 @@ import java.util.List;
 /** Temporary safety journal for SMS discarded by this app. Tap an entry to recover it. */
 public final class DeletedHistoryActivity extends Activity {
     private boolean dark;
+    private RetentionRestart restartNotice;
     private TextView subtitle;
     private ListView list;
     private TextView empty;
@@ -132,10 +133,11 @@ public final class DeletedHistoryActivity extends Activity {
         empty.setTextColor(ThemeColors.secondaryText(dark));
         root.addView(empty, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-        setContentView(root);
+        restartNotice = new RetentionRestart(this, root, true, () -> refresh());
     }
 
     private void refresh() {
+        if (restartNotice != null) restartNotice.refresh();
         int firstVisible = list.getFirstVisiblePosition();
         View topChild = list.getChildAt(0);
         int topOffset = topChild == null ? 0 : topChild.getTop();
@@ -278,7 +280,7 @@ public final class DeletedHistoryActivity extends Activity {
         card.addView(heading);
 
         TextView explanation = new TextView(this);
-        explanation.setText("Elige cuánto tiempo conservar las vistas previas. Al vencer, se eliminan definitivamente. Reducir el tiempo puede borrar entradas existentes; aumentarlo no recupera las ya eliminadas.");
+        explanation.setText("Elige cuánto tiempo conservar las vistas previas. Al vencer, se eliminan definitivamente. Los registros existentes mantienen su plazo hasta que pulses ↻ REINICIAR. Entonces el nuevo tiempo empieza desde cero. Lo ya eliminado definitivamente no se recupera.");
         Ui.text(explanation, 16f);
         explanation.setTextColor(ThemeColors.secondaryText(dark));
         explanation.setPadding(0, dp(10), 0, dp(12));

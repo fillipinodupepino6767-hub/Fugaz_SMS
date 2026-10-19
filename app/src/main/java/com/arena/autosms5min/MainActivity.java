@@ -61,6 +61,7 @@ public final class MainActivity extends Activity {
     private final List<Long> resetTapTimes = new ArrayList<>();
     private String query = "";
     private boolean dark;
+    private RetentionRestart restartNotice;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable refreshTicker = new Runnable() {
         @Override public void run() {
@@ -184,7 +185,7 @@ public final class MainActivity extends Activity {
         settings.setTextColor(ThemeColors.accent(dark));
         settings.setContentDescription("Configuración");
         settings.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        settings.setMinWidth(dp(52));
+        Ui.styleToolbarIcon(settings);
         settings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         toolbar.addView(settings, new LinearLayout.LayoutParams(dp(52), dp(52)));
 
@@ -194,7 +195,7 @@ public final class MainActivity extends Activity {
         help.setTextColor(ThemeColors.accent(dark));
         help.setContentDescription("Ayuda");
         help.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        help.setMinWidth(dp(52));
+        Ui.styleToolbarIcon(help);
         help.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)
                 .putExtra(SettingsActivity.EXTRA_START_HELP, true)));
         toolbar.addView(help, new LinearLayout.LayoutParams(dp(52), dp(52)));
@@ -224,7 +225,7 @@ public final class MainActivity extends Activity {
         Ui.text(archived, 20f);
         archived.setContentDescription("Archivados");
         archived.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        archived.setMinWidth(dp(52));
+        Ui.styleToolbarIcon(archived);
         archived.setOnClickListener(v -> startActivity(new Intent(this, ArchivedActivity.class)));
         toolbar.addView(archived, new LinearLayout.LayoutParams(dp(52), dp(52)));
         Button deletedHistory = new Button(this);
@@ -233,7 +234,7 @@ public final class MainActivity extends Activity {
         deletedHistory.setTextColor(ThemeColors.accent(dark));
         deletedHistory.setContentDescription("Eliminados recientemente");
         deletedHistory.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        deletedHistory.setMinWidth(dp(52));
+        Ui.styleToolbarIcon(deletedHistory);
         deletedHistory.setOnClickListener(v -> startActivity(new Intent(this, DeletedHistoryActivity.class)));
         toolbar.addView(deletedHistory, new LinearLayout.LayoutParams(dp(52), dp(52)));
         root.addView(toolbar);
@@ -398,7 +399,7 @@ public final class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
         installSizeResetGesture(root);
-        setContentView(root);
+        restartNotice = new RetentionRestart(this, root, false, () -> refresh());
     }
 
     /** Gmail-style swipe. Each side's action is configurable in Settings. */
@@ -545,6 +546,7 @@ public final class MainActivity extends Activity {
     }
 
     private void refresh() {
+        if (restartNotice != null) restartNotice.refresh();
         // Keep the scroll position: the 1-second countdown ticker rebuilds the rows.
         LinearLayoutManager layout = (LinearLayoutManager) list.getLayoutManager();
         int firstVisible = layout == null ? 0 : layout.findFirstVisibleItemPosition();

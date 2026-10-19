@@ -522,7 +522,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.28.5 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.28.6 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         Ui.text(footer, 13f);
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
@@ -868,38 +868,13 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
         ThemedDialog.singleChoice(this, "Tiempo para borrar SMS nuevos",
                 "Se aplica a los SMS que lleguen de ahora en adelante, según su tipo. "
-                        + "Si hay cuentas atrás en curso, después podrás reiniciarlas con el nuevo tiempo o dejarlas como están.",
+                        + "En la bandeja aparecerá ↻ REINICIAR para aplicar el nuevo tiempo desde cero a las cuentas en curso. Hasta pulsarlo conservan su plazo anterior.",
                 labels, checked, which -> {
                     long selected = values[which];
                     AppState.setRetentionMillis(this, selected);
                     refreshUi();
-                    askApplyRetentionToPending(selected);
-                });
-    }
 
-    /** Offers to restart in-flight countdowns with the newly chosen retention. */
-    private void askApplyRetentionToPending(long retention) {
-        int pending = MessageMaintenance.countValidPending(this);
-        if (pending <= 0) return;
-        if (retention == AppState.NEVER) {
-            ThemedDialog.confirm(this, "Cancelar cuentas en curso",
-                    "Cambiaste a «Nunca automáticamente» y hay " + pending
-                            + " mensaje(s) con cuenta atrás en curso. ¿Cancelo esas cuentas? (esos mensajes se conservarán)",
-                    "Mantenerlas", "Cancelarlas", () -> {
-                        int cancelled = MessageMaintenance.cancelAllPending(this);
-                        Toast.makeText(this, cancelled + " cuenta(s) cancelada(s).",
-                                Toast.LENGTH_SHORT).show();
-                    });
-        } else {
-            ThemedDialog.confirm(this, "Aplicar a los pendientes",
-                    "Hay " + pending + " mensaje(s) con cuenta atrás en curso (conservan su hora original). ¿Los reinicias con el nuevo tiempo ("
-                            + AppState.retentionLabel(this) + ") desde ahora?",
-                    "Solo nuevos", "Reiniciar todo", () -> {
-                        int restarted = MessageMaintenance.restartAllPending(this, retention);
-                        Toast.makeText(this, restarted + " cuenta(s) reiniciada(s).",
-                                Toast.LENGTH_SHORT).show();
-                    });
-        }
+                });
     }
 
     private void showBlockedSenders() {

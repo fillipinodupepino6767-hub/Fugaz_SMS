@@ -91,7 +91,19 @@ final class Ui {
         button.setGravity(Gravity.CENTER);
     }
 
+    /** Remove system-sized button insets/minimums that clip icons at 70 %. */
+    static void styleToolbarIcon(Button button) {
+        button.setPadding(0, 0, 0, 0);
+        button.setMinWidth(0);
+        button.setMinimumWidth(0);
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        button.setGravity(Gravity.CENTER);
+        button.setIncludeFontPadding(false);
+    }
+
     static void styleToolbarBack(Button back, boolean dark) {
+        styleToolbarIcon(back);
         text(back, 30f);
         back.setTextColor(ThemeColors.accent(dark));
         back.setBackgroundColor(android.graphics.Color.TRANSPARENT);

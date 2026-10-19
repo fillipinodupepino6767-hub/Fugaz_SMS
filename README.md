@@ -3,6 +3,22 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.6 (v0.28.6)
+
+- **↻ REINICIAR en cada bandeja:** al cambiar la duración de los entrantes o
+  de eliminados recientemente aparece una tarjeta superpuesta sobre los mensajes,
+  con un texto específico para esa bandeja y el nuevo tiempo. El aviso queda
+  guardado aunque cierres la app. Cambiar el ajuste no modifica los plazos de
+  mensajes existentes: al pulsar REINICIAR y confirmar empiezan desde cero.
+- **Historial con plazos independientes:** acortar o alargar la duración solo
+  afecta a nuevas entradas hasta reiniciar. Se conserva la fecha real de eliminación;
+  no se recupera nada ya vencido. En entrantes solo se reinician cuentas pendientes;
+  «Nunca» las cancela, sin tocar enviados ni conservados.
+- **Iconos superiores sin recortes al reducir tamaño:** se eliminan los rellenos
+  y mínimos heredados de los botones de Android en los iconos de la bandeja y
+  en Volver. El texto sigue calculándose en píxeles con Ui.text, sin seguir
+  el tamaño de letra del sistema. Pendiente de validación física en Samsung A16.
+
 ## Novedades de la versión 0.28.5 (v28.5)
 
 - **Atajo para volver al tamaño 100 % con toques al fondo:** si la bandeja se
