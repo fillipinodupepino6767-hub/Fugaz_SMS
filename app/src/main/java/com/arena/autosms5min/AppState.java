@@ -97,7 +97,9 @@ final class AppState {
     }
 
     static void setRetentionMillis(Context context, long millis) {
+        if (millis == retentionMillis(context)) return;
         prefs(context).edit().putLong(KEY_RETENTION_MS, millis).apply();
+        RetentionRestart.mark(context, false);
     }
 
     static String retentionLabel(Context context) {

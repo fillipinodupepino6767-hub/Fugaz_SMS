@@ -102,15 +102,23 @@ final class DeletionLog {
         return prefs(context).getLong(KEY_RETENTION, DEFAULT_RETENTION_MS);
     }
 
-    /**
-     * Shortening applies to existing previews too. Lengthening never extends an
-     * entry already created, so a purged preview can never come back.
-     */
+    /** Existing entries retain their deadlines until the explicit restart action. */
     static void setRetentionMillis(Context context, long value) {
         long safeValue = Math.max(ONE_HOUR_MS, value);
+        if (safeValue == retentionMillis(context)) return;
         prefs(context).edit().putLong(KEY_RETENTION, safeValue).apply();
-        List<Entry> entries = load(context); // load applies the new, possibly shorter limit.
-        save(context, entries);
+        RetentionRestart.mark(context, true);
+    }
+
+    static void restartRetained(Context context) {
+        List<Entry> entries = load(context); // Never resurrect expired entries.
+        long expiry = System.currentTimeMillis() + retentionMillis(context);
+        List<Entry> restarted = new ArrayList<>();
+        for (Entry e : entries) {
+            restarted.add(new Entry(e.sender, e.preview, e.full, e.time, expiry,
+                    e.reason, e.label, e.keyword));
+        }
+        save(context, restarted);
         HistoryExpiryScheduler.scheduleNext(context);
     }
 
@@ -131,7 +139,6 @@ final class DeletionLog {
     private static List<Entry> load(Context context) {
         List<Entry> result = new ArrayList<>();
         long now = System.currentTimeMillis();
-        long currentLimit = retentionMillis(context);
         String raw = prefs(context).getString(KEY_ENTRIES, "[]");
         try {
             JSONArray array = new JSONArray(raw);
@@ -140,8 +147,8 @@ final class DeletionLog {
                 long time = item.optLong("time", 0L);
                 // Compatibility with v11: old entries use the former 24-hour limit.
                 long savedExpiry = item.optLong("expiresAt", time + DEFAULT_RETENTION_MS);
-                // A lower new setting removes older retained data; a higher setting never restores it.
-                long expiresAt = Math.min(savedExpiry, time + currentLimit);
+                // Each entry owns its deadline, independent of later settings changes.
+                long expiresAt = savedExpiry;
                 Entry entry = new Entry(item.optString("sender", "Desconocido"),
                         item.optString("preview", ""), item.optString("full", ""), time, expiresAt,
                         item.optString("reason", "Eliminado"), item.optString("label", "Normal"),
