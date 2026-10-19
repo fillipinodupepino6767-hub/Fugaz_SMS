@@ -552,3 +552,13 @@ lanzamiento propia; no publiques una clave privada ni SMS en GitHub.
   borre.
 - Reiniciar el teléfono durante los cinco minutos: tras el reinicio, el SMS debe
   eliminarse al llegar (o superar) el momento pendiente.
+- Ventana de reinicio: cambia la duración de eliminación en Ajustes y vuelve a
+  la bandeja. Debe abrirse una ventana grande con un solo botón REINICIAR; no
+  se cierra con Atrás ni tocando fuera. Al pulsar REINICIAR, las cuentas
+  pendientes empiezan desde cero y la fecha real de borrado no cambia. Si sales
+  de la app con la ventana abierta, debe cerrarse sin reiniciar los plazos y no
+  volver a aparecer hasta que cambies la duración otra vez.
+- Letra resaltada: en Ajustes → Apariencia → LETRA elige «Resaltada (negrita)».
+  El texto debe verse más grueso sin cambiar de tamaño, y los mensajes deben
+  seguir mostrándose completos, con remitente, categoría, cuerpo, fecha y
+  cuenta atrás separados.
