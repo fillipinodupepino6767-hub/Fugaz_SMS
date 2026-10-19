@@ -29,10 +29,13 @@ public final class ConversationActivity extends Activity {
     private LinearLayout messages;
     private ImageView photoView;
     private TextView heading;
+    private TextView headerHint;
     private TextView resultCount;
     private Button blockButton;
     private String query = "";
     private boolean dark;
+    private String renderedSignature = "";
+    private final java.util.List<Runnable> timerUpdates = new java.util.ArrayList<>();
     private final Handler countdownHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownTicker = new Runnable() {
         @Override public void run() {
@@ -98,7 +101,15 @@ public final class ConversationActivity extends Activity {
         heading = new TextView(this);
         Ui.text(heading, 18f);
         heading.setTextColor(ThemeColors.primaryText(dark));
-        headerRow.addView(heading, new LinearLayout.LayoutParams(0,
+        LinearLayout headerText = new LinearLayout(this);
+        headerText.setOrientation(LinearLayout.VERTICAL);
+        headerText.addView(heading);
+        headerHint = new TextView(this);
+        Ui.text(headerHint, 12f);
+        headerHint.setTextColor(ThemeColors.secondaryText(dark));
+        headerHint.setPadding(0, dp(4), 0, 0);
+        headerText.addView(headerHint);
+        headerRow.addView(headerText, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         root.addView(headerRow);
         updateHeader();
@@ -201,7 +212,8 @@ public final class ConversationActivity extends Activity {
     private void updateHeader() {
         String name = ContactNames.displayName(this, address);
         setTitle(name);
-        heading.setText(ContactNames.twoLineLabel(this, address) + "\n" + retentionHint());
+        heading.setText(ContactNames.twoLineLabel(this, address));
+        headerHint.setText(retentionHint());
         Bitmap image = ContactNames.photo(this, address);
         if (image != null) {
             photoView.setImageBitmap(image);
@@ -213,10 +225,10 @@ public final class ConversationActivity extends Activity {
     private String retentionHint() {
         long retention = AppState.retentionMillis(this);
         if (retention == AppState.NEVER) {
-            return "El auto-borrado está en Nunca: los entrantes se conservan salvo que los elimines.";
+            return "Nuevos SMS sin borrado automático";
         }
-        return "Los entrantes se borran aprox. " + AppState.retentionLabel(this)
-                + " después de su llegada, salvo que pulses Conservar.";
+        return "Borrado de nuevos SMS: " + AppState.retentionLabel(this)
+                + " · según categoría. Los conservados no se borran solos.";
     }
 
     private Button secondaryButton(String text) {
@@ -233,64 +245,95 @@ public final class ConversationActivity extends Activity {
         return button;
     }
 
+    private Button messageAction(String label) {
+        Button button = new Button(this);
+        Ui.text(button, 13f);
+        button.setText(label);
+        button.setAllCaps(false);
+        button.setTextColor(ThemeColors.accent(dark));
+        button.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        button.setMinWidth(0);
+        button.setMinimumWidth(0);
+        button.setMinHeight(dp(48));
+        button.setPadding(dp(6), dp(8), dp(6), dp(8));
+        button.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+        return button;
+    }
+
     private void populateMessages() {
         if (messages == null) return;
-        messages.removeAllViews();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         List<SmsStore.SmsItem> items = SmsStore.messagesForAddress(this, address);
         String name = ContactNames.displayName(this, address);
         String lowered = query.toLowerCase();
+        StringBuilder signature = new StringBuilder(query);
+        for (SmsStore.SmsItem item : items) {
+            signature.append('|').append(item.id).append(':').append(item.type).append(':')
+                    .append(item.date).append(':').append(item.body.length()).append(':').append(item.body)
+                    .append(':').append(MessageClassifier.classify(this, item.body).display())
+                    .append(':').append(DeleteRegistry.dueAt(this, item.id));
+        }
+        if (signature.toString().equals(renderedSignature)) {
+            for (Runnable update : timerUpdates) update.run();
+            return;
+        }
+        renderedSignature = signature.toString();
+        timerUpdates.clear();
+        messages.removeAllViews();
         int shown = 0;
         for (SmsStore.SmsItem item : items) {
             if (!query.isEmpty() && !item.body.toLowerCase().contains(lowered)) continue;
             shown++;
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(12), dp(10), dp(12), dp(10));
+            card.setPadding(dp(16), dp(16), dp(16), dp(12));
             card.setBackground(ThemeColors.rounded(this, item.type == SmsStore.TYPE_SENT
                     ? ThemeColors.sentBubble(dark) : ThemeColors.incomingBubble(dark), 12));
             LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            cardParams.setMargins(0, dp(4), 0, dp(4));
+            cardParams.setMargins(item.type == SmsStore.TYPE_SENT ? dp(22) : 0, dp(6),
+                    item.type == SmsStore.TYPE_SENT ? 0 : dp(22), dp(6));
             card.setLayoutParams(cardParams);
 
-            TextView row = new TextView(this);
+            MessageViews row = new MessageViews(this, dark);
             String who = item.type == SmsStore.TYPE_SENT ? "Tú" : name;
             MessageClassifier.Result classification = MessageClassifier.classify(this, item.body);
-            row.setText(who + "\n[" + classification.display() + "]\n" + item.body + "\n" + format.format(item.date));
-            Ui.text(row, 16f);
-            row.setTextColor(ThemeColors.primaryText(dark));
+            long scheduled = item.type == SmsStore.TYPE_INBOX ? DeleteRegistry.dueAt(this, item.id) : -1L;
+            row.bind(who, classification.display(), item.body, format.format(item.date),
+                    scheduled > 0 ? "⏳ Se elimina en " + CountdownFormatter.formatVerbose(scheduled)
+                            : item.type == SmsStore.TYPE_SENT ? "Enviado" : "✓ Conservado · sin borrado automático");
             card.addView(row);
+            if (scheduled > 0) {
+                timerUpdates.add(() -> row.updateStatus("⏳ Se elimina en "
+                        + CountdownFormatter.formatVerbose(scheduled)));
+            }
 
-            Button share = secondaryButton("COMPARTIR");
+            LinearLayout actions = new LinearLayout(this);
+            actions.setGravity(Gravity.END);
+            LinearLayout.LayoutParams actionRowParams = new LinearLayout.LayoutParams(-1, -2);
+            actionRowParams.topMargin = dp(10);
+            card.addView(actions, actionRowParams);
+            Button share = messageAction("Compartir");
             share.setOnClickListener(v -> shareMessage(item));
-            card.addView(share);
+            actions.addView(share);
 
             if (item.type == SmsStore.TYPE_INBOX) {
                 long dueAt = DeleteRegistry.dueAt(this, item.id);
                 if (dueAt > 0L) {
-                    TextView timer = new TextView(this);
-                    timer.setText("⏳ Se elimina aproximadamente en "
-                            + CountdownFormatter.formatVerbose(dueAt));
-                    Ui.text(timer, 13f);
-                    timer.setTextColor(ThemeColors.accent(dark));
-                    timer.setPadding(0, dp(8), 0, 0);
-                    card.addView(timer);
-
-                    Button keep = secondaryButton("CONSERVAR ESTE SMS");
+                    Button keep = messageAction("Conservar");
                     keep.setOnClickListener(v -> keepMessage(item.id));
-                    card.addView(keep);
+                    actions.addView(keep);
                 } else {
                     // Messages that were conserved can later be removed deliberately.
-                    Button delete = secondaryButton("ELIMINAR ESTE SMS");
+                    Button delete = messageAction("Eliminar");
                     delete.setOnClickListener(v -> confirmDelete(item.id));
-                    card.addView(delete);
+                    actions.addView(delete);
                 }
             } else {
                 // Sent messages are kept by design, but can be removed deliberately.
-                Button deleteSent = secondaryButton("ELIMINAR ESTE SMS");
+                Button deleteSent = messageAction("Eliminar");
                 deleteSent.setOnClickListener(v -> confirmDelete(item.id));
-                card.addView(deleteSent);
+                actions.addView(deleteSent);
             }
             messages.addView(card);
         }

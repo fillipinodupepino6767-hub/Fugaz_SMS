@@ -1,21 +1,18 @@
 package com.arena.autosms5min;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
-import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
+import android.widget.Toast;
 
-/** Independent, persistent notices. Changing a setting never restarts old timers. */
+/** One blocking notice per change. Leaving the screen dismisses without restarting. */
 final class RetentionRestart {
     private final Activity activity;
     private final boolean history;
-    private final ScrollView notice;
-    private final TextView message;
+    private final Runnable updated;
+    private Dialog dialog;
+    private boolean resumed;
 
     private static String key(boolean history) {
         return history ? "history_restart_pending" : "inbox_restart_pending";
@@ -29,55 +26,53 @@ final class RetentionRestart {
     RetentionRestart(Activity activity, View content, boolean history, Runnable updated) {
         this.activity = activity;
         this.history = history;
-        boolean dark = AppState.isDarkMode(activity);
-        FrameLayout frame = new FrameLayout(activity);
-        frame.addView(content, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout card = new LinearLayout(activity);
-        card.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(activity, 12);
-        card.setPadding(pad, pad, pad, pad);
-        card.setBackground(ThemeColors.rounded(activity, ThemeColors.incomingBubble(dark), 12));
-        message = new TextView(activity);
-        Ui.text(message, 14f);
-        message.setTextColor(ThemeColors.primaryText(dark));
-        card.addView(message);
-        Button restart = new Button(activity);
-        Ui.styleActionButton(restart, dark);
-        restart.setText("↻ REINICIAR");
-        restart.setOnClickListener(v -> ThemedDialog.confirm(activity,
-                "Reiniciar tiempo de " + (history ? "eliminados recientemente" : "entrantes"),
-                "El nuevo plazo empieza desde cero al confirmar. Hasta entonces siguen vigentes los plazos anteriores. "
-                        + (history ? "No se recupera nada que ya haya vencido."
-                        : "Solo se reinician cuentas pendientes; los mensajes conservados o enviados no se modifican. Si elegiste «Nunca», se cancelan esas cuentas."),
-                "Cancelar", "Reiniciar", () -> {
-                    if (history) DeletionLog.restartRetained(activity);
-                    else MessageMaintenance.restartAllPending(activity, AppState.retentionMillis(activity));
-                    activity.getSharedPreferences("retention_restart", Context.MODE_PRIVATE)
-                            .edit().putBoolean(key(history), false).apply();
-                    updated.run();
-                }));
-        card.addView(restart);
-        notice = new ScrollView(activity);
-        notice.setFillViewport(false);
-        notice.addView(card);
-        // A floating card over the message area, capped to leave the toolbar reachable.
-        int maxHeight = activity.getResources().getDisplayMetrics().heightPixels / 3;
-        notice.setOnTouchListener((v, event) -> false);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-1, maxHeight, Gravity.BOTTOM);
-        params.setMargins(pad, pad, pad, pad);
-        frame.addView(notice, params);
-        activity.setContentView(frame);
+        this.updated = updated;
+        activity.setContentView(content);
+    }
+
+    void onResume() {
+        resumed = true;
         refresh();
     }
 
+    void onPause() {
+        resumed = false;
+        // Consumed when shown: neither Home, screen lock, rotation nor process death
+        // can leave a stale blocking dialog to reappear on the next launch.
+        if (dialog != null) {
+            dialog.dismiss();
+            dialog = null;
+        }
+    }
+
     void refresh() {
-        boolean pending = activity.getSharedPreferences("retention_restart", Context.MODE_PRIVATE)
-                .getBoolean(key(history), false);
-        notice.setVisibility(pending ? View.VISIBLE : View.GONE);
-        message.setText("↻ Se detectó un cambio en la configuración de la duración de eliminación de mensajes "
-                + (history ? "de eliminados recientemente" : "entrantes")
-                + ".\nNuevo tiempo: " + (history ? DeletionLog.retentionLabel(activity)
-                : AppState.retentionLabel(activity))
-                + ". Pulsa REINICIAR para actualizar los mensajes existentes y empezar su tiempo desde cero. Mientras tanto, conservan su plazo anterior.");
+        if (!resumed || activity.isFinishing() || activity.isDestroyed()
+                || (dialog != null && dialog.isShowing()) || ThemedDialog.activeCount() > 0) return;
+        android.content.SharedPreferences prefs = activity.getSharedPreferences(
+                "retention_restart", Context.MODE_PRIVATE);
+        if (!prefs.getBoolean(key(history), false)) return;
+        String section = history ? "eliminados recientemente" : "mensajes entrantes";
+        String duration = history ? DeletionLog.retentionLabel(activity) : AppState.retentionLabel(activity);
+        // Commit before display so even an abrupt process kill cannot replay this notice.
+        if (!prefs.edit().putBoolean(key(history), false).commit()) return;
+        dialog = ThemedDialog.requiredAction(activity, "↻ Cambió el tiempo de " + section,
+                "Se detectó un cambio en la duración de eliminación de " + section + ".\n\n"
+                        + "Nuevo tiempo: " + duration + ".\n\n"
+                        + "Pulsa REINICIAR para aplicar este tiempo a las cuentas existentes y empezarlas desde cero.\n\n"
+                        + (history ? "No se recuperan registros que ya hayan vencido."
+                        : "Solo se actualizan cuentas pendientes. No se tocan los enviados ni los conservados. Si elegiste «Nunca», se cancelan esas cuentas.")
+                        + "\n\nSi sales de la app sin reiniciar, este aviso se desactiva y los mensajes mantienen sus plazos anteriores.",
+                "↻ REINICIAR", () -> {
+                    try {
+                        if (history) DeletionLog.restartRetained(activity);
+                        else MessageMaintenance.restartAllPending(activity, AppState.retentionMillis(activity));
+                        dialog.dismiss();
+                        dialog = null;
+                        updated.run();
+                    } catch (RuntimeException error) {
+                        Toast.makeText(activity, "No se pudo reiniciar. Revisa los permisos e inténtalo de nuevo.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 }

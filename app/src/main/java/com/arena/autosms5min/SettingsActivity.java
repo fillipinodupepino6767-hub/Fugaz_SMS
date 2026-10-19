@@ -431,6 +431,17 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         // Help tour anchor: the size button, so the «vuelta al 100 %» tip points at it.
         helpAnchors.put("apariencia", sizeButton);
         root.addView(sizeButton);
+        Button fontButton = actionButton(AppState.boldText(this)
+                ? "LETRA: RESALTADA (NEGRITA)" : "LETRA: NORMAL");
+        fontButton.setOnClickListener(v -> ThemedDialog.singleChoice(this,
+                "Estilo de letra", "Elige la letra que te resulte más cómoda. El tamaño no cambia.",
+                new String[]{"Normal · suave y sencilla", "Resaltada · negrita"},
+                AppState.boldText(this) ? 1 : 0, which -> {
+                    AppState.setBoldText(this, which == 1);
+                    recreate();
+                }));
+        root.addView(fontButton);
+
 
                 root.addView(sectionTitle("Privacidad"));
         privButton = actionButton("");
@@ -522,7 +533,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.28.6 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.28.7 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         Ui.text(footer, 13f);
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);

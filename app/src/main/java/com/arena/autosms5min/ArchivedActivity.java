@@ -67,16 +67,22 @@ public final class ArchivedActivity extends Activity {
         root.addView(subtitle);
 
         list = new ListView(this);
-        list.setDividerHeight(dp(1));
+        list.setDivider(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        list.setDividerHeight(dp(10));
+
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<>()) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                TextView row = (TextView) super.getView(position, convertView, parent);
-                row.setTextColor(ThemeColors.primaryText(dark));
-                Ui.text(row, 16f);
-                row.setMinHeight(dp(52));
-                row.setPadding(dp(16), dp(14), dp(16), dp(14));
-                row.setBackgroundColor(ThemeColors.background(dark));
+                MessageViews row = convertView instanceof MessageViews ? (MessageViews) convertView
+                        : new MessageViews(ArchivedActivity.this, dark);
+                row.setPadding(dp(16), dp(16), dp(16), dp(16));
+                row.setBackground(ThemeColors.rounded(ArchivedActivity.this,
+                        ThemeColors.incomingBubble(dark), 14));
+                SmsStore.SmsItem item = shownItems.get(position);
+                DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
+                row.bind(ContactNames.twoLineLabel(ArchivedActivity.this, item.address),
+                        MessageClassifier.classify(ArchivedActivity.this, item.body).display(), item.body,
+                        format.format(item.date), "Archivado · sin borrado automático");
                 return row;
             }
         };

@@ -45,7 +45,29 @@ jobs:
           SMS_KEYSTORE_PASSWORD: ${{ secrets.SMS_KEYSTORE_PASSWORD }}
           SMS_KEY_ALIAS: ${{ secrets.SMS_KEY_ALIAS }}
           SMS_KEY_PASSWORD: ${{ secrets.SMS_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease --no-daemon
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest :app:assembleRelease --no-daemon 2>&1 | tee "$RUNNER_TEMP/fugaz-build.log"
+
+      # Keep diagnostics accessible through the Checks API when sandbox access to
+      # GitHub's separate log/artifact storage hosts is unavailable.
+      - name: Anotar errores de compilación o pruebas
+        if: failure()
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          def annotate(text):
+              escaped = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::error::' + escaped)
+          log = Path(os.environ['RUNNER_TEMP']) / 'fugaz-build.log'
+          if log.exists():
+              annotate(log.read_text(errors='replace')[-14000:])
+          for report in Path('app/build/test-results').rglob('TEST-*.xml'):
+              for case in ET.parse(report).getroot().iter('testcase'):
+                  for failure in case.findall('failure'):
+                      annotate(case.get('name', '') + ': ' + (failure.text or '')[:12000])
 
       - name: Guardar el APK para descargarlo
         uses: actions/upload-artifact@v4

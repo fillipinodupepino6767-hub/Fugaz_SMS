@@ -69,12 +69,31 @@ final class Ui {
      * the system font size out of the app; the slider is the only multiplier.
      */
     static void text(TextView view, float designSp) {
+        typography(view);
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx(view.getContext(), designSp));
     }
 
     /** Preview variant: sizes the view at a scale that is not saved yet. */
     static void text(TextView view, float designSp, float scale) {
+        typography(view);
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx(view.getContext(), designSp, scale));
+    }
+
+    private static void typography(TextView view) {
+        boolean bold = AppState.boldText(view.getContext());
+        view.setTypeface(typeface(view.getContext(), "sans-serif"),
+                bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        view.setLineSpacing(0f, 1.15f);
+    }
+
+    /**
+     * One family for the whole app. When the person asks for highlighted
+     * letters the family is requested in bold, so the phone uses its own
+     * bold face instead of stretching the normal one.
+     */
+    static android.graphics.Typeface typeface(Context context, String family) {
+        return android.graphics.Typeface.create(family, AppState.boldText(context)
+                ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
     }
 
     /** Shared look for the big settings / action buttons across screens. */

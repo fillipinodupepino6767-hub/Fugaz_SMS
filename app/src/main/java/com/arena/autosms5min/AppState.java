@@ -24,6 +24,14 @@ final class AppState {
     private static final String KEY_HELP_SHOWN_VERSION = "help_shown_version";
     private static final String KEY_NOTES_VISIBLE = "settings_notes_visible";
     private static final String KEY_UI_SCALE = "ui_scale";
+    static boolean boldText(Context context) {
+        return prefs(context).getBoolean("bold_text", false);
+    }
+
+    static void setBoldText(Context context, boolean enabled) {
+        prefs(context).edit().putBoolean("bold_text", enabled).apply();
+    }
+
     /** Appearance modes. */
     static final int THEME_LIGHT = 0;
     static final int THEME_DARK = 1;

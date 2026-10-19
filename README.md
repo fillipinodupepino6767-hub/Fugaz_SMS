@@ -3,6 +3,29 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.7 (v0.28.7)
+
+- **Ventana de reinicio grande y obligatoria:** sustituye la tarjeta pegada a la
+  bandeja. No se cierra con Atrás ni tocando fuera; un único botón REINICIAR
+  aplica el nuevo plazo desde cero, sin segunda confirmación. El contenido se
+  desplaza para que el botón siga accesible con letra grande. Si sales de la
+  pantalla (Inicio, bloqueo, cambio de app o rotación), el aviso se cierra y se
+  desactiva sin reiniciar los plazos. No reaparece al volver ni tras cerrar el
+  proceso; un nuevo cambio de duración genera otro aviso. Esto sustituye la
+  persistencia del aviso una vez mostrado de v0.28.6.
+- **Letra más limpia y resaltado opcional:** tipografía sans-serif con más aire
+  entre líneas. Configuración → Apariencia → LETRA permite elegir Normal o
+  Resaltada (negrita), sin cambiar el tamaño ni seguir la escala del sistema.
+- **Mensajes ordenados por bloques:** remitente, categoría, cuerpo, fecha y
+  cuenta atrás separados, con jerarquía de tamaños y márgenes en bandeja,
+  conversación, archivados e historial. No se modifica el texto real del SMS.
+  En conversaciones, las burbujas de enviados/recibidos tienen margen lateral
+  distinto y las acciones Compartir / Conservar / Eliminar van en una fila
+  compacta. La cabecera también separa el contacto de la explicación de borrado.
+- **Cuenta atrás sin reconstruir la conversación cada segundo:** mientras no
+  cambien sus datos, solo se actualiza el texto del temporizador, evitando
+  interrumpir los toques sobre acciones o el desplazamiento.
+
 ## Novedades de la versión 0.28.6 (v0.28.6)
 
 - **↻ REINICIAR en cada bandeja:** al cambiar la duración de los entrantes o
@@ -529,3 +552,13 @@ lanzamiento propia; no publiques una clave privada ni SMS en GitHub.
   borre.
 - Reiniciar el teléfono durante los cinco minutos: tras el reinicio, el SMS debe
   eliminarse al llegar (o superar) el momento pendiente.
+- Ventana de reinicio: cambia la duración de eliminación en Ajustes y vuelve a
+  la bandeja. Debe abrirse una ventana grande con un solo botón REINICIAR; no
+  se cierra con Atrás ni tocando fuera. Al pulsar REINICIAR, las cuentas
+  pendientes empiezan desde cero y la fecha real de borrado no cambia. Si sales
+  de la app con la ventana abierta, debe cerrarse sin reiniciar los plazos y no
+  volver a aparecer hasta que cambies la duración otra vez.
+- Letra resaltada: en Ajustes → Apariencia → LETRA elige «Resaltada (negrita)».
+  El texto debe verse más grueso sin cambiar de tamaño, y los mensajes deben
+  seguir mostrándose completos, con remitente, categoría, cuerpo, fecha y
+  cuenta atrás separados.
