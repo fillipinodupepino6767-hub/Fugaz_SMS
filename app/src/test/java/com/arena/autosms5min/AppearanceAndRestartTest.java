@@ -33,6 +33,9 @@ public class AppearanceAndRestartTest {
     @Before public void setUp() {
         controller = Robolectric.buildActivity(Activity.class).setup();
         activity = controller.get();
+        for (String name : new String[]{"app_state", "deletion_log", "retention_restart"}) {
+            assertTrue(activity.getSharedPreferences(name, Activity.MODE_PRIVATE).edit().clear().commit());
+        }
         notice = new RetentionRestart(activity, new LinearLayout(activity), true, () -> { });
     }
 
@@ -46,8 +49,12 @@ public class AppearanceAndRestartTest {
         long originalExpiry = DeletionLog.entries(activity).get(0).expiresAt;
         DeletionLog.setRetentionMillis(activity, 6 * DeletionLog.ONE_HOUR_MS);
         assertEquals(originalExpiry, DeletionLog.entries(activity).get(0).expiresAt);
+        assertTrue("Changing history duration must mark a new notice",
+                activity.getSharedPreferences("retention_restart", Activity.MODE_PRIVATE)
+                        .getBoolean("history_restart_pending", false));
         notice.onResume();
         Dialog dialog = ShadowDialog.getLatestDialog();
+        assertNotNull("A resumed screen must display its pending notice", dialog);
         assertTrue(dialog.isShowing());
         dialog.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK));
         dialog.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
@@ -69,8 +76,12 @@ public class AppearanceAndRestartTest {
         DeletionLog.add(activity, "123", "Texto original", "Prueba");
         long deletedAt = DeletionLog.entries(activity).get(0).time;
         DeletionLog.setRetentionMillis(activity, 6 * DeletionLog.ONE_HOUR_MS);
+        assertTrue("Changing history duration must mark a new notice",
+                activity.getSharedPreferences("retention_restart", Activity.MODE_PRIVATE)
+                        .getBoolean("history_restart_pending", false));
         notice.onResume();
         Dialog dialog = ShadowDialog.getLatestDialog();
+        assertNotNull("A resumed screen must display its pending notice", dialog);
         Button restart = findButton(dialog.findViewById(android.R.id.content));
         assertNotNull(restart);
         long before = System.currentTimeMillis();
@@ -99,10 +110,12 @@ public class AppearanceAndRestartTest {
         AppState.setBoldText(activity, false);
         Ui.text(normal, 16);
         AppState.setBoldText(activity, true);
+        assertTrue("Bold preference must update immediately", AppState.boldText(activity));
         TextView bold = new TextView(activity);
         Ui.text(bold, 16);
         assertFalse(normal.getTypeface().isBold());
-        assertTrue(bold.getTypeface().isBold());
+        assertTrue("Highlighted text must be bold (native or synthetic)",
+                bold.getTypeface().isBold() || bold.getPaint().isFakeBoldText());
         assertEquals(normal.getTextSize(), bold.getTextSize(), 0.01f);
         MessageViews message = new MessageViews(activity, true);
         String sms = "Primera línea\n\nCódigo: 1234 5678";

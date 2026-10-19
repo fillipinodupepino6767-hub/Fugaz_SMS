@@ -80,9 +80,9 @@ final class Ui {
     }
 
     private static void typography(TextView view) {
-        view.setTypeface(android.graphics.Typeface.create("sans-serif",
+        view.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL),
                 AppState.boldText(view.getContext()) ? android.graphics.Typeface.BOLD
-                        : android.graphics.Typeface.NORMAL));
+                        : android.graphics.Typeface.NORMAL);
         view.setLineSpacing(0f, 1.15f);
     }
 
