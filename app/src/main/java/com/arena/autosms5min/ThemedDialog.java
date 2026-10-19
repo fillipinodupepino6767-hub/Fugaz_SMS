@@ -14,6 +14,10 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Rounded dialogs that follow the app's dark/light theme. The platform alert
  * dialog kept a white style on some dark-mode phones (Motorola, Samsung),
@@ -79,9 +83,24 @@ final class ThemedDialog {
         finish(activity, dialog, card);
     }
 
-    /** Windows currently on screen (helpers use it to avoid stacking dialogs). */
-    private static int activeCount;
-    static int activeCount() { return activeCount; }
+    /**
+     * Windows currently on screen (helpers use it to avoid stacking dialogs).
+     * The list is checked against the dialogs themselves instead of counting
+     * show/dismiss events: the dismiss callback travels through a handler
+     * message, so a counter would keep a closed window busy for one more
+     * frame and would block the next dialog from opening.
+     */
+    private static final List<WeakReference<Dialog>> live = new ArrayList<>();
+
+    static int activeCount() {
+        int count = 0;
+        for (int i = live.size() - 1; i >= 0; i--) {
+            Dialog dialog = live.get(i).get();
+            if (dialog == null || !dialog.isShowing()) live.remove(i);
+            else count++;
+        }
+        return count;
+    }
 
     /**
      * One floating window of the guided help tour, pinned to the bottom so the
@@ -312,12 +331,11 @@ final class ThemedDialog {
         scroll.setBackgroundColor(Color.TRANSPARENT);
         scroll.addView(card);
         dialog.setContentView(scroll);
-        activeCount++;
         dialog.setOnDismissListener(d -> {
-            activeCount--;
             if (onClosed != null) onClosed.run();
         });
         dialog.show();
+        live.add(new WeakReference<>(dialog));
         if (dialog.getWindow() != null) {
             Window window = dialog.getWindow();
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));

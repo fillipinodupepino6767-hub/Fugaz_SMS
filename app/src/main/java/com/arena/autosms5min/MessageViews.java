@@ -1,7 +1,6 @@
 package com.arena.autosms5min;
 
 import android.content.Context;
-import android.graphics.Typeface;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -18,8 +17,7 @@ final class MessageViews extends LinearLayout {
         super(context);
         setOrientation(VERTICAL);
         sender = field(16, ThemeColors.primaryText(dark), 0);
-        sender.setTypeface(Typeface.create("sans-serif-medium",
-                AppState.boldText(context) ? Typeface.BOLD : Typeface.NORMAL));
+        sender.setTypeface(Ui.typeface(context, "sans-serif-medium"));
         category = field(12, ThemeColors.accent(dark), 4);
         body = field(16, ThemeColors.primaryText(dark), 10);
         body.setLineSpacing(Ui.dp(context, 2), 1.18f);

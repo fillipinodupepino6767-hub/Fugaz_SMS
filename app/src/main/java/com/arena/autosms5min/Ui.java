@@ -80,10 +80,20 @@ final class Ui {
     }
 
     private static void typography(TextView view) {
-        view.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL),
-                AppState.boldText(view.getContext()) ? android.graphics.Typeface.BOLD
-                        : android.graphics.Typeface.NORMAL);
+        boolean bold = AppState.boldText(view.getContext());
+        view.setTypeface(typeface(view.getContext(), "sans-serif"),
+                bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         view.setLineSpacing(0f, 1.15f);
+    }
+
+    /**
+     * One family for the whole app. When the person asks for highlighted
+     * letters the family is requested in bold, so the phone uses its own
+     * bold face instead of stretching the normal one.
+     */
+    static android.graphics.Typeface typeface(Context context, String family) {
+        return android.graphics.Typeface.create(family, AppState.boldText(context)
+                ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
     }
 
     /** Shared look for the big settings / action buttons across screens. */
