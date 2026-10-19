@@ -61,6 +61,7 @@ public final class MainActivity extends Activity {
     private final List<Long> resetTapTimes = new ArrayList<>();
     private String query = "";
     private boolean dark;
+    private boolean appliedBold;
     private RetentionRestart restartNotice;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable refreshTicker = new Runnable() {
@@ -119,7 +120,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (dark != AppState.isDarkMode(this)) {
+        if (dark != AppState.isDarkMode(this) || appliedBold != AppState.boldText(this)) {
             recreate();
             return;
         }
@@ -143,12 +144,14 @@ public final class MainActivity extends Activity {
             SetupHelper.maybeRemindSetup(this, REQUEST_SMS_ROLE);
             SetupHelper.maybeCelebrate(this);
         }
+        if (restartNotice != null) restartNotice.onResume();
         refreshHandler.removeCallbacks(refreshTicker);
         refreshHandler.postDelayed(refreshTicker, 1_000L);
     }
 
     @Override
     protected void onPause() {
+        if (restartNotice != null) restartNotice.onPause();
         pausedAt = System.currentTimeMillis();
         refreshHandler.removeCallbacks(refreshTicker);
         super.onPause();
@@ -169,6 +172,7 @@ public final class MainActivity extends Activity {
     }
 
     private void buildUi() {
+        appliedBold = AppState.boldText(this);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(ThemeColors.background(dark));
@@ -582,11 +586,9 @@ public final class MainActivity extends Activity {
                     countdown = "\n✓ Conservado · no se borra solo";
                 }
             }
-            String text = direction + ContactNames.twoLineLabel(this, item.address)
-                    + "\n[" + classification.display() + "]\n"
-                    + item.body + "\n" + format.format(item.date) + countdown;
-            rows.add(new InboxAdapter.Row(text, ContactNames.avatarLetter(name),
-                    ContactNames.avatarColor(name)));
+            rows.add(new InboxAdapter.Row(direction + ContactNames.twoLineLabel(this, item.address),
+                    classification.display(), item.body, format.format(item.date), countdown.trim(),
+                    ContactNames.avatarLetter(name), ContactNames.avatarColor(name)));
         }
         adapter.setRows(rows);
         if (layout != null && firstVisible >= 0) layout.scrollToPositionWithOffset(firstVisible, topOffset);
@@ -694,11 +696,16 @@ public final class MainActivity extends Activity {
         }
 
         static final class Row {
-            final String text;
+            final String sender, category, body, date, status;
             final String letter;
             final int color;
-            Row(String text, String letter, int color) {
-                this.text = text;
+            Row(String sender, String category, String body, String date, String status,
+                String letter, int color) {
+                this.sender = sender;
+                this.category = category;
+                this.body = body;
+                this.date = date;
+                this.status = status;
                 this.letter = letter;
                 this.color = color;
             }
@@ -706,8 +713,8 @@ public final class MainActivity extends Activity {
 
         static final class Holder extends RecyclerView.ViewHolder {
             final TextView avatar;
-            final TextView text;
-            Holder(View row, TextView avatar, TextView text) {
+            final MessageViews text;
+            Holder(View row, TextView avatar, MessageViews text) {
                 super(row);
                 this.avatar = avatar;
                 this.text = text;
@@ -733,14 +740,16 @@ public final class MainActivity extends Activity {
         public Holder onCreateViewHolder(ViewGroup parent, int viewType) {
             android.content.Context ctx = parent.getContext();
             int pad = Ui.dp(ctx, 14);
-            int avatarSize = Ui.dp(ctx, 56);
+            int avatarSize = Ui.dp(ctx, 44);
             LinearLayout row = new LinearLayout(parent.getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setGravity(Gravity.TOP);
             row.setPadding(pad, pad, pad, pad);
-            row.setBackgroundColor(ThemeColors.background(dark));
-            row.setLayoutParams(new RecyclerView.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            row.setBackground(ThemeColors.rounded(ctx, ThemeColors.incomingBubble(dark), 16));
+            RecyclerView.LayoutParams rowParams = new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowParams.setMargins(Ui.dp(ctx, 10), Ui.dp(ctx, 5), Ui.dp(ctx, 10), Ui.dp(ctx, 5));
+            row.setLayoutParams(rowParams);
             TextView avatar = new TextView(parent.getContext());
             avatar.setGravity(Gravity.CENTER);
             avatar.setTextColor(Color.WHITE);
@@ -749,9 +758,7 @@ public final class MainActivity extends Activity {
             LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(avatarSize, avatarSize);
             avatarParams.setMargins(0, 0, pad, 0);
             row.addView(avatar, avatarParams);
-            TextView text = new TextView(parent.getContext());
-            text.setTextColor(ThemeColors.primaryText(dark));
-            Ui.text(text, 16f);
+            MessageViews text = new MessageViews(ctx, dark);
             row.addView(text, new LinearLayout.LayoutParams(0,
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             return new Holder(row, avatar, text);
@@ -760,7 +767,7 @@ public final class MainActivity extends Activity {
         @Override
         public void onBindViewHolder(Holder holder, int position) {
             Row row = rows.get(position);
-            holder.text.setText(row.text);
+            holder.text.bind(row.sender, row.category, row.body, row.date, row.status);
             holder.avatar.setText(row.letter);
             GradientDrawable circle = new GradientDrawable();
             circle.setShape(GradientDrawable.OVAL);

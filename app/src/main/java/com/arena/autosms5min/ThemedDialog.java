@@ -37,6 +37,20 @@ final class ThemedDialog {
         finish(activity, dialog, card);
     }
 
+    /** Blocking, scrollable notice: only its action closes it while foregrounded. */
+    static Dialog requiredAction(Activity activity, String title, String message,
+                                 String label, Runnable action) {
+        Dialog dialog = new Dialog(activity);
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
+        LinearLayout card = card(activity, dialog, title, message);
+        Button button = textButton(activity, label, true);
+        button.setOnClickListener(v -> action.run());
+        card.addView(button);
+        finish(activity, dialog, card);
+        return dialog;
+    }
+
     static void confirm(Activity activity, String title, String message,
                         String cancelLabel, String okLabel, Runnable onOk) {
         confirm(activity, title, message, cancelLabel, okLabel, null, onOk);

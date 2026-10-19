@@ -51,6 +51,7 @@ public final class DeletedHistoryActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (restartNotice != null) restartNotice.onResume();
         refresh();
         tickerHandler.removeCallbacks(ticker);
         tickerHandler.postDelayed(ticker, 1_000L);
@@ -58,6 +59,7 @@ public final class DeletedHistoryActivity extends Activity {
 
     @Override
     protected void onPause() {
+        if (restartNotice != null) restartNotice.onPause();
         tickerHandler.removeCallbacks(ticker);
         super.onPause();
     }
@@ -109,15 +111,23 @@ public final class DeletedHistoryActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         list = new ListView(this);
+        list.setDivider(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        list.setDividerHeight(dp(10));
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<>()) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                TextView row = (TextView) super.getView(position, convertView, parent);
-                row.setTextColor(ThemeColors.primaryText(dark));
-                Ui.text(row, 15f);
-                row.setMinHeight(dp(52));
-                row.setPadding(dp(12), dp(14), dp(12), dp(14));
-                row.setBackgroundColor(ThemeColors.incomingBubble(dark));
+                MessageViews row = convertView instanceof MessageViews ? (MessageViews) convertView
+                        : new MessageViews(DeletedHistoryActivity.this, dark);
+                row.setPadding(dp(16), dp(16), dp(16), dp(16));
+                row.setBackground(ThemeColors.rounded(DeletedHistoryActivity.this,
+                        ThemeColors.incomingBubble(dark), 14));
+                DeletionLog.Entry entry = shownEntries.get(position);
+                DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
+                row.bind(ContactNames.twoLineLabel(DeletedHistoryActivity.this, entry.sender),
+                        liveTag(entry) + " · " + entry.reason, entry.preview,
+                        "Eliminado: " + format.format(entry.time),
+                        "Vence: " + format.format(entry.expiresAt) + " · quedan "
+                                + CountdownFormatter.formatHistoryRemaining(entry.expiresAt));
                 return row;
             }
         };

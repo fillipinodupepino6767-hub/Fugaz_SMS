@@ -69,12 +69,21 @@ final class Ui {
      * the system font size out of the app; the slider is the only multiplier.
      */
     static void text(TextView view, float designSp) {
+        typography(view);
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx(view.getContext(), designSp));
     }
 
     /** Preview variant: sizes the view at a scale that is not saved yet. */
     static void text(TextView view, float designSp, float scale) {
+        typography(view);
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx(view.getContext(), designSp, scale));
+    }
+
+    private static void typography(TextView view) {
+        view.setTypeface(android.graphics.Typeface.create("sans-serif",
+                AppState.boldText(view.getContext()) ? android.graphics.Typeface.BOLD
+                        : android.graphics.Typeface.NORMAL));
+        view.setLineSpacing(0f, 1.15f);
     }
 
     /** Shared look for the big settings / action buttons across screens. */

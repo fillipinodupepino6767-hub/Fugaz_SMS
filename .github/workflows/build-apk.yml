@@ -45,7 +45,7 @@ jobs:
           SMS_KEYSTORE_PASSWORD: ${{ secrets.SMS_KEYSTORE_PASSWORD }}
           SMS_KEY_ALIAS: ${{ secrets.SMS_KEY_ALIAS }}
           SMS_KEY_PASSWORD: ${{ secrets.SMS_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease --no-daemon
+        run: gradle :app:testDebugUnitTest :app:assembleRelease --no-daemon
 
       - name: Guardar el APK para descargarlo
         uses: actions/upload-artifact@v4
