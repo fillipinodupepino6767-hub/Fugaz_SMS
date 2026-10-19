@@ -2,7 +2,7 @@ name: Compilar APK de SMS 5 minutos
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'arena/**' ]
   workflow_dispatch:
 
 permissions:
