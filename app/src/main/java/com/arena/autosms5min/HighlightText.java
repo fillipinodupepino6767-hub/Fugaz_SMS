@@ -3,7 +3,7 @@ package com.arena.autosms5min;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.text.Spannable;
-import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
@@ -33,9 +33,9 @@ final class HighlightText {
         String text = body == null ? "" : body;
         boolean highlightWords = words != null && !words.isEmpty();
         boolean highlightDate = date != null && !date.isEmpty();
-        // Always a SpannableString, even with nothing to highlight: callers
-        // (and their tests) can always treat the result as Spanned.
-        SpannableString out = new SpannableString(text);
+        // Always a SpannableStringBuilder, even with nothing to highlight:
+        // callers (and their tests) can always treat the result as Spanned.
+        SpannableStringBuilder out = new SpannableStringBuilder(text);
         if (text.isEmpty() || (!highlightWords && !highlightDate)) return out;
 
         boolean darkMode = AppState.isDarkMode(context);
