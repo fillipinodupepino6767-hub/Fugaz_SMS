@@ -2,7 +2,6 @@ package com.arena.autosms5min;
 
 import android.content.Context;
 import android.graphics.Typeface;
-import android.text.CharacterSpan;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.BackgroundColorSpan;
@@ -41,13 +40,16 @@ final class HighlightText {
 
         boolean darkMode = AppState.isDarkMode(context);
         int style = HighlightStore.style(context);
+        // Ranges already lit up, so a short word inside a longer phrase does not
+        // add a second overlapping span over the same characters.
+        List<int[]> covered = new ArrayList<>();
 
         if (highlightDate) {
-            style(out, text, date, darkMode, style);
+            style(out, text, date, darkMode, style, covered);
         }
         if (highlightWords) {
             for (String word : sortedByLengthFirst(words)) {
-                style(out, text, word, darkMode, style);
+                style(out, text, word, darkMode, style, covered);
             }
         }
         return out;
@@ -69,7 +71,7 @@ final class HighlightText {
      * a substring, mirroring {@link MessageClassifier}.
      */
     private static void style(Spannable out, String text, String needle,
-                              boolean darkMode, int style) {
+                              boolean darkMode, int style, List<int[]> covered) {
         String haystack = normalize(text);
         String key = normalize(needle);
         if (key.isEmpty()) return;
@@ -84,20 +86,20 @@ final class HighlightText {
             boolean leftOk = index == 0 || !Character.isLetterOrDigit(haystack.charAt(index - 1));
             boolean rightOk = end >= haystack.length()
                     || !Character.isLetterOrDigit(haystack.charAt(end));
-            // Skip anything a longer phrase already covered. Without this, a
-            // short word inside "saldo insuficiente" would add a second,
-            // overlapping span over text that is already highlighted.
-            if ((substring || (leftOk && rightOk)) && !alreadyCovered(out, index, end)) {
+            if ((substring || (leftOk && rightOk)) && !alreadyCovered(covered, index, end)) {
                 applySpan(out, index, end, darkMode, style);
+                covered.add(new int[]{index, end});
             }
             from = index + 1;
         }
     }
 
-    /** True when an existing highlight span already covers [start, end]. */
-    private static boolean alreadyCovered(Spannable out, int start, int end) {
-        CharacterSpan[] existing = out.getSpans(start, end, CharacterSpan.class);
-        return existing != null && existing.length > 0;
+    /** True when a previously applied highlight already covers [start, end]. */
+    private static boolean alreadyCovered(List<int[]> covered, int start, int end) {
+        for (int[] range : covered) {
+            if (range[0] <= start && range[1] >= end) return true;
+        }
+        return false;
     }
 
     private static void applySpan(Spannable out, int start, int end,
