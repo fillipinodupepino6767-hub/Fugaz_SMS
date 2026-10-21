@@ -47,7 +47,7 @@ final class MessageViews extends LinearLayout {
      * applied to a display copy only: the stored SMS is never touched.
      */
     void bind(String from, String label, String text, String timestamp, String countdown,
-              List<String> highlightWords, String highlightDate) {
+              List<String> highlightWords, List<String> highlightDates) {
         sender.setText(from);
         category.setText(label);
         category.setVisibility(label.isEmpty() ? View.GONE : View.VISIBLE);

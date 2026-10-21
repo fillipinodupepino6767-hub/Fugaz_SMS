@@ -146,7 +146,7 @@ public class HighlightTextTest {
         String date = "15 de octubre";
         CharSequence out = HighlightText.apply(activity,
                 "ElXtamo es el " + date + " a las 9",
-                Collections.<String>emptyList(), date);
+                Collections.<String>emptyList(), Collections.singletonList(date));
         assertEquals(1, count(((Spanned) out).getSpans(0, out.length(),
                 ForegroundColorSpan.class)));
         assertEquals(date, highlighted(out, ForegroundColorSpan.class));
@@ -164,6 +164,31 @@ public class HighlightTextTest {
         assertEquals("la frase larga debe cubrir la corta sin partirla", 1,
                 count(((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class)));
         assertEquals("saldo insuficiente", highlighted(out, ForegroundColorSpan.class));
+    }
+
+    @Test public void onlyTheDateIsMarkedNotTheWholeMessage() {
+        // Regression for v0.28.8: the inbox passed the ENTIRE body as the date
+        // needle, so the message matched itself and every character lit up.
+        // Dates must come from DateInText and cover only themselves.
+        HighlightStore.setDatesEnabled(activity, true);
+        HighlightStore.setStyle(activity, HighlightStore.STYLE_COLOR);
+        String body = "PHILLIP LE GRAY VARGAS la CCSS recuerda su cita PRESENCIAL: "
+                + "HOSPITAL SAN RAFAEL DE ALAJUEL, ODONTOLOGIA GENERAL el 19/10/2026 02:00 PM.";
+        List<String> dates = DateInText.find(body);
+        assertEquals("debe detectar la fecha numérica", 1, dates.size());
+        assertEquals("19/10/2026", dates.get(0));
+        CharSequence out = HighlightText.apply(activity, body,
+                Collections.<String>emptyList(), dates);
+        assertEquals("solo la fecha se resalta, no todo el mensaje", 1,
+                count(((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class)));
+        assertEquals("19/10/2026", highlighted(out, ForegroundColorSpan.class));
+    }
+
+    @Test public void dateFinderLeavesOrdinaryTextAlone() {
+        assertTrue("sin fechas no hay nada que resaltar",
+                DateInText.find("Llama al 5061234 cuando puedas").isEmpty());
+        List<String> found = DateInText.find("Traigo 3 tortillas y pago 2500 colones");
+        assertTrue("números sueltos no son fechas", found.isEmpty());
     }
 
     @Test public void wordStoreReplacesCasingInsteadOfDuplicating() {

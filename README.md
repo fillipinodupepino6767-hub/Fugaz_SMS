@@ -3,6 +3,25 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.9 (v0.28.9)
+
+- **Arreglo del resaltado (se nota enseguida):** en v0.28.8, al activar «RESALTAR
+  FECHAS DE LOS ENTRANTES», se pasaba el mensaje entero como texto a resaltar, así
+  que el mensaje coincidía consigo mismo y **se coloreaba todo el cuerpo**. Ahora
+  las fechas se buscan **dentro** del texto (números como 19/10/2026, horas como
+  02:00 PM y meses como «5 de octubre») y **solo se resalta ese fragmento**. Las
+  palabras marcadas y los números sueltos que no son fecha (un teléfono, un
+  monto) se dejan como estaban. La palabra «cita» en la etiqueta «Importante» ya
+  no tiñe el mensaje completo.
+- **Eliminados recientemente también se actualiza solo:** como en la bandeja
+  principal, si cambias el tiempo de conservación de las vistas previas, el
+  subtítulo lo anuncia al instante («♻️ ahora 1 hora») y la lista se redibuja
+  sola. Sin avisos emergentes.
+- **El tiempo del temporizador de silencio, ahora con barra deslizadora:** en
+  lugar de una lista, se elige deslizando (parecido a la barra de tamaño). Solo
+  ofrece estas paradas exactas: **15 minutos, 30 minutos, 1 h, 2 h, 3 h, 4 h, 5 h,
+  6 h, 7 h, 8 h, 9 h y 10 h**. No se puede llegar a ningún otro tiempo.
+
 ## Novedades de la versión 0.28.8 (v0.28.8)
 
 - **Barra superior bajada a la tarjeta de búsqueda:** los cuatro iconos
