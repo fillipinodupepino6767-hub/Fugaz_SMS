@@ -2,10 +2,10 @@ package com.arena.autosms5min;
 
 import android.content.Context;
 import android.graphics.Typeface;
+import android.text.CharacterSpan;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.BackgroundColorSpan;
-import android.text.style.CharacterSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 
