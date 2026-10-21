@@ -5,6 +5,7 @@ import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.BackgroundColorSpan;
+import android.text.style.CharacterSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 
@@ -83,11 +84,20 @@ final class HighlightText {
             boolean leftOk = index == 0 || !Character.isLetterOrDigit(haystack.charAt(index - 1));
             boolean rightOk = end >= haystack.length()
                     || !Character.isLetterOrDigit(haystack.charAt(end));
-            if (substring || (leftOk && rightOk)) {
+            // Skip anything a longer phrase already covered. Without this, a
+            // short word inside "saldo insuficiente" would add a second,
+            // overlapping span over text that is already highlighted.
+            if ((substring || (leftOk && rightOk)) && !alreadyCovered(out, index, end)) {
                 applySpan(out, index, end, darkMode, style);
             }
             from = index + 1;
         }
+    }
+
+    /** True when an existing highlight span already covers [start, end]. */
+    private static boolean alreadyCovered(Spannable out, int start, int end) {
+        CharacterSpan[] existing = out.getSpans(start, end, CharacterSpan.class);
+        return existing != null && existing.length > 0;
     }
 
     private static void applySpan(Spannable out, int start, int end,
