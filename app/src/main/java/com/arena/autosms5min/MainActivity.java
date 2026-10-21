@@ -56,12 +56,18 @@ public final class MainActivity extends Activity {
     private TextView emptyTitle;
     private TextView emptyBody;
     private EditText searchBox;
+    /** Only visible while the search box holds text. */
+    private Button clearSearchButton;
     private Button sizeButton;
     /** Timestamps (elapsedRealtime) of the current background-tap chain. */
     private final List<Long> resetTapTimes = new ArrayList<>();
     private String query = "";
     private boolean dark;
     private boolean appliedBold;
+    /** Set when the deletion duration changed under us; drives the subtitle note. */
+    private long lastRetentionChange = Long.MIN_VALUE;
+    /** Timestamp of the last re-classification seen, for the subtitle note. */
+    private long lastLabelChangeAt;
     private RetentionRestart restartNotice;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable refreshTicker = new Runnable() {
@@ -183,27 +189,6 @@ public final class MainActivity extends Activity {
         toolbar.setPadding(dp(8), dp(10), dp(8), dp(8));
         toolbar.setBackgroundColor(ThemeColors.background(dark));
 
-        Button settings = new Button(this);
-        settings.setText("⚙");
-        Ui.text(settings, 25f);
-        settings.setTextColor(ThemeColors.accent(dark));
-        settings.setContentDescription("Configuración");
-        settings.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        Ui.styleToolbarIcon(settings);
-        settings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
-        toolbar.addView(settings, new LinearLayout.LayoutParams(dp(52), dp(52)));
-
-        Button help = new Button(this);
-        help.setText("\u2753");
-        Ui.text(help, 22f);
-        help.setTextColor(ThemeColors.accent(dark));
-        help.setContentDescription("Ayuda");
-        help.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        Ui.styleToolbarIcon(help);
-        help.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)
-                .putExtra(SettingsActivity.EXTRA_START_HELP, true)));
-        toolbar.addView(help, new LinearLayout.LayoutParams(dp(52), dp(52)));
-
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
         TextView title = new TextView(this);
@@ -222,25 +207,11 @@ public final class MainActivity extends Activity {
         });
         titles.addView(title);
         titles.addView(subtitle);
+        // The header now carries only the title. The four icons moved down into
+        // the search card (see searchRow): on a tall screen with a big letter the
+        // top corners were the hardest places to reach.
         toolbar.addView(titles, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        Button archived = new Button(this);
-        archived.setText("\uD83D\uDCE6");
-        Ui.text(archived, 20f);
-        archived.setContentDescription("Archivados");
-        archived.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        Ui.styleToolbarIcon(archived);
-        archived.setOnClickListener(v -> startActivity(new Intent(this, ArchivedActivity.class)));
-        toolbar.addView(archived, new LinearLayout.LayoutParams(dp(52), dp(52)));
-        Button deletedHistory = new Button(this);
-        deletedHistory.setText("⌛");
-        Ui.text(deletedHistory, 22f);
-        deletedHistory.setTextColor(ThemeColors.accent(dark));
-        deletedHistory.setContentDescription("Eliminados recientemente");
-        deletedHistory.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        Ui.styleToolbarIcon(deletedHistory);
-        deletedHistory.setOnClickListener(v -> startActivity(new Intent(this, DeletedHistoryActivity.class)));
-        toolbar.addView(deletedHistory, new LinearLayout.LayoutParams(dp(52), dp(52)));
         root.addView(toolbar);
 
         warningBanner = new LinearLayout(this);
@@ -308,6 +279,7 @@ public final class MainActivity extends Activity {
         searchRow.addView(searchBox, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button clearSearch = new Button(this);
+        clearSearchButton = clearSearch;
         clearSearch.setText("✕");
         Ui.text(clearSearch, 16f);
         clearSearch.setTextColor(ThemeColors.accent(dark));
@@ -315,6 +287,18 @@ public final class MainActivity extends Activity {
         clearSearch.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         clearSearch.setOnClickListener(v -> searchBox.setText(""));
         searchRow.addView(clearSearch, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        // The four former toolbar icons live here now, behind one ⋯ button:
+        // fewer taps to the same places and none of them at the top of a tall
+        // screen. The clear button only shows while there is something to clear.
+        Button menu = new Button(this);
+        menu.setText("⋯");
+        Ui.text(menu, 24f);
+        menu.setTextColor(ThemeColors.accent(dark));
+        menu.setContentDescription("Más opciones");
+        menu.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        Ui.styleToolbarIcon(menu);
+        menu.setOnClickListener(v -> showHeaderMenu());
+        searchRow.addView(menu, new LinearLayout.LayoutParams(dp(48), dp(48)));
         root.addView(searchRow);
 
         // Quick actions: compose a new SMS and adjust the interface size.
@@ -551,6 +535,9 @@ public final class MainActivity extends Activity {
 
     private void refresh() {
         if (restartNotice != null) restartNotice.refresh();
+        if (clearSearchButton != null) {
+            clearSearchButton.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
+        }
         // Keep the scroll position: the 1-second countdown ticker rebuilds the rows.
         LinearLayoutManager layout = (LinearLayoutManager) list.getLayoutManager();
         int firstVisible = layout == null ? 0 : layout.findFirstVisibleItemPosition();
@@ -562,6 +549,14 @@ public final class MainActivity extends Activity {
         List<InboxAdapter.Row> rows = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
         boolean neverMode = AppState.retentionMillis(this) == AppState.NEVER;
+        // Point 2: the inbox redraws itself every second, so a changed duration
+        // or a re-classified message shows up on its own. These three snapshots
+        // are what we compare to notice that something actually moved.
+        long retention = AppState.retentionMillis(this);
+        boolean datesHighlighted = HighlightStore.datesEnabled(this);
+        List<String> highlightWords = HighlightStore.wordsEnabled(this)
+                ? HighlightStore.words(this) : java.util.Collections.<String>emptyList();
+        StringBuilder labelFingerprint = new StringBuilder();
         int total = 0;
         unreadCount = 0;
         for (SmsStore.SmsItem item : all) {
@@ -586,10 +581,16 @@ public final class MainActivity extends Activity {
                     countdown = "\n✓ Conservado · no se borra solo";
                 }
             }
+            // Only incoming messages carry a date worth lighting up.
+            String highlightDate = datesHighlighted && item.type == SmsStore.TYPE_INBOX
+                    ? item.body : null;
+            labelFingerprint.append(item.id).append('=').append(classification.label).append(';');
             rows.add(new InboxAdapter.Row(direction + ContactNames.twoLineLabel(this, item.address),
                     classification.display(), item.body, format.format(item.date), countdown.trim(),
-                    ContactNames.avatarLetter(name), ContactNames.avatarColor(name)));
+                    ContactNames.avatarLetter(name), ContactNames.avatarColor(name),
+                    highlightWords, highlightDate));
         }
+        noticeAutomaticChanges(retention, labelFingerprint.toString());
         adapter.setRows(rows);
         if (layout != null && firstVisible >= 0) layout.scrollToPositionWithOffset(firstVisible, topOffset);
         boolean hasMessages = !shownItems.isEmpty();
@@ -610,7 +611,20 @@ public final class MainActivity extends Activity {
             emptyTitle.setText("Todo leído ✅");
             emptyBody.setText("No queda ningún mensaje sin leer.\nToca arriba para ver toda la bandeja.");
         } else {
-            subtitle.setText("Bandeja temporal · borrado: " + AppState.retentionLabel(this) + unreadPart);
+            // The automatic updates live here: the duration and any re-labelled
+            // message are announced in the line that is already on screen,
+            // instead of in a popup that would fire on every tick.
+            StringBuilder note = new StringBuilder();
+            if (lastRetentionChange != Long.MIN_VALUE) {
+                note.append(" · ♻️ duración ahora ").append(AppState.retentionLabel(this));
+                lastRetentionChange = Long.MIN_VALUE;
+            }
+            if (lastLabelChangeAt > 0L) {
+                note.append(" · 🔄 etiquetas actualizadas");
+                lastLabelChangeAt = 0L;
+            }
+            subtitle.setText("Bandeja temporal · borrado: " + AppState.retentionLabel(this)
+                    + unreadPart + note);
             emptyTitle.setText("Sin mensajes");
             emptyBody.setText("Todo despejado y limpio ✨\nTu bandeja se tomó un respiro.");
         }
@@ -622,6 +636,65 @@ public final class MainActivity extends Activity {
             warningBanner.setVisibility(View.VISIBLE);
             warningText.setText("⚠ " + problem);
         }
+    }
+
+    /**
+     * Point 2: the rows already redraw every second, so nothing here has to
+     * rebuild the list. This only records what the screen is currently showing
+     * and quietly notes the two changes a person would otherwise miss: the
+     * deletion duration moving, and a message being re-labelled (for example
+     * Normal → Posible spam) once new keywords are added in Settings.
+     *
+     * <p>Deliberately no Toast and no popup: the subtitle and the badges are
+     * right there, and a notification every second would be unbearable.
+     */
+    private void noticeAutomaticChanges(long retention, String labelFingerprint) {
+        String retentionKey = "main_retention_seen";
+        String labelsKey = "main_labels_seen";
+        android.content.SharedPreferences state = getSharedPreferences("main_watch",
+                MODE_PRIVATE);
+        if (state.getBoolean("started", false)) {
+            if (state.getLong(retentionKey, Long.MIN_VALUE) != retention
+                    && !labelFingerprint.isEmpty()) {
+                lastRetentionChange = retention;
+            }
+            String previousLabels = state.getString(labelsKey, "");
+            if (!previousLabels.isEmpty() && !previousLabels.equals(labelFingerprint)) {
+                lastLabelChangeAt = System.currentTimeMillis();
+            }
+        }
+        state.edit()
+                .putBoolean("started", true)
+                .putLong(retentionKey, retention)
+                .putString(labelsKey, labelFingerprint)
+                .apply();
+    }
+
+    /**
+     * The four destinations that used to sit in the top corners. They are now
+     * one tap away from the search bar, which sits at thumb height.
+     */
+    private void showHeaderMenu() {
+        ThemedDialog.items(this, "Ir a…",
+                "Todo lo que estaba arriba en la barra, ahora a un toque.",
+                new String[]{
+                        "⚙ Configuración",
+                        "❓ Ayuda (guía de 10 ventanitas)",
+                        "\uD83D\uDCE6 Archivados (no se borran solos)",
+                        "⌛ Eliminados recientemente"
+                },
+                "Cerrar", which -> {
+                    if (which == 0) {
+                        startActivity(new Intent(this, SettingsActivity.class));
+                    } else if (which == 1) {
+                        startActivity(new Intent(this, SettingsActivity.class)
+                                .putExtra(SettingsActivity.EXTRA_START_HELP, true));
+                    } else if (which == 2) {
+                        startActivity(new Intent(this, ArchivedActivity.class));
+                    } else if (which == 3) {
+                        startActivity(new Intent(this, DeletedHistoryActivity.class));
+                    }
+                });
     }
 
     private void handleComposeIntent(Intent intent) {
@@ -699,8 +772,11 @@ public final class MainActivity extends Activity {
             final String sender, category, body, date, status;
             final String letter;
             final int color;
+            final java.util.List<String> highlightWords;
+            final String highlightDate;
             Row(String sender, String category, String body, String date, String status,
-                String letter, int color) {
+                String letter, int color, java.util.List<String> highlightWords,
+                String highlightDate) {
                 this.sender = sender;
                 this.category = category;
                 this.body = body;
@@ -708,6 +784,8 @@ public final class MainActivity extends Activity {
                 this.status = status;
                 this.letter = letter;
                 this.color = color;
+                this.highlightWords = highlightWords;
+                this.highlightDate = highlightDate;
             }
         }
 
@@ -767,7 +845,8 @@ public final class MainActivity extends Activity {
         @Override
         public void onBindViewHolder(Holder holder, int position) {
             Row row = rows.get(position);
-            holder.text.bind(row.sender, row.category, row.body, row.date, row.status);
+            holder.text.bind(row.sender, row.category, row.body, row.date, row.status,
+                    row.highlightWords, row.highlightDate);
             holder.avatar.setText(row.letter);
             GradientDrawable circle = new GradientDrawable();
             circle.setShape(GradientDrawable.OVAL);

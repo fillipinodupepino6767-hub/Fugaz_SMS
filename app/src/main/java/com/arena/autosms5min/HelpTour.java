@@ -67,8 +67,12 @@ final class HelpTour {
             "Deslizar un mensaje a la derecha o izquierda lo borra o archiva, como en Gmail; "
                 + "cada lado se configura por separado aquí abajo.\n\n"
                 + "Mantén presionado un mensaje para abrirlo, archivarlo o eliminarlo.\n\n"
-                + "📦 Archivados no se borran solos. 🔎 El buscador de la bandeja filtra por "
-                + "nombre, número o texto.",
+                + "⋯ Junto al buscador están Configuración, Ayuda, Archivados y Eliminados "
+                + "recientemente: bajados de la barra de arriba para que se alcancen sin "
+                + "esforzarse en pantallas altas.\n\n"
+                + "🔎 El buscador filtra por nombre, número o texto. Y en RESALTAR EN LOS "
+                + "MENSAJES (abajo, en Apariencia) eliges qué palabras y fechas se "
+                + "colorean dentro de los mensajes.",
             "deslizar"},
         {"🔔 Avisos, silencio y vigilancia",
             "Si no escuchas mensajes: PROBAR SONIDO DE NOTIFICACIÓN (sección Permisos). Si la "

@@ -266,7 +266,14 @@ public final class ConversationActivity extends Activity {
         List<SmsStore.SmsItem> items = SmsStore.messagesForAddress(this, address);
         String name = ContactNames.displayName(this, address);
         String lowered = query.toLowerCase();
-        StringBuilder signature = new StringBuilder(query);
+        // Highlight preferences and word list are part of the signature: changing
+        // them in Settings must redraw the bubbles, not leave them stale.
+        List<String> highlightWords = HighlightStore.wordsEnabled(this)
+                ? HighlightStore.words(this) : java.util.Collections.<String>emptyList();
+        StringBuilder signature = new StringBuilder(query)
+                .append('#').append(HighlightStore.style(this))
+                .append('#').append(HighlightStore.datesEnabled(this))
+                .append('#').append(highlightWords);
         for (SmsStore.SmsItem item : items) {
             signature.append('|').append(item.id).append(':').append(item.type).append(':')
                     .append(item.date).append(':').append(item.body.length()).append(':').append(item.body)
@@ -301,7 +308,8 @@ public final class ConversationActivity extends Activity {
             long scheduled = item.type == SmsStore.TYPE_INBOX ? DeleteRegistry.dueAt(this, item.id) : -1L;
             row.bind(who, classification.display(), item.body, format.format(item.date),
                     scheduled > 0 ? "⏳ Se elimina en " + CountdownFormatter.formatVerbose(scheduled)
-                            : item.type == SmsStore.TYPE_SENT ? "Enviado" : "✓ Conservado · sin borrado automático");
+                            : item.type == SmsStore.TYPE_SENT ? "Enviado" : "✓ Conservado · sin borrado automático",
+                    highlightWords, item.type == SmsStore.TYPE_INBOX ? item.body : null);
             card.addView(row);
             if (scheduled > 0) {
                 timerUpdates.add(() -> row.updateStatus("⏳ Se elimina en "
