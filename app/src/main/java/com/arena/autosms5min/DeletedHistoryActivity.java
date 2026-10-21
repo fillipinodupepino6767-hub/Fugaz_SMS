@@ -32,6 +32,9 @@ public final class DeletedHistoryActivity extends Activity {
     private Button retention;
     private ArrayAdapter<String> adapter;
     private List<DeletionLog.Entry> shownEntries = new ArrayList<>();
+    /** Shown once in the subtitle when the preview-retention time changes. */
+    private String retentionChangeNote = "";
+    private String seenRetention;
     private final Handler tickerHandler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
@@ -146,7 +149,26 @@ public final class DeletedHistoryActivity extends Activity {
         restartNotice = new RetentionRestart(this, root, true, () -> refresh());
     }
 
-    private void refresh() {
+    /**
+ * Mirrors what the main inbox does for its own duration: the screen already
+ * redraws every second, so a changed preview-retention time is noticed here and
+ * said out loud in the subtitle for one tick. No popup, no notification.
+ */
+private void noticeRetentionChange() {
+        String current = DeletionLog.retentionLabel(this);
+        if (seenRetention == null) {
+            seenRetention = current; // first pass: just remember where we are
+            return;
+        }
+        if (!seenRetention.equals(current)) {
+            seenRetention = current;
+            retentionChangeNote = " · ♻️ ahora " + current;
+        } else {
+            retentionChangeNote = "";
+        }
+}
+
+private void refresh() {
         if (restartNotice != null) restartNotice.refresh();
         int firstVisible = list.getFirstVisiblePosition();
         View topChild = list.getChildAt(0);
@@ -155,9 +177,11 @@ public final class DeletedHistoryActivity extends Activity {
         List<DeletionLog.Entry> entries = DeletionLog.entries(this);
         shownEntries = entries;
         String period = DeletionLog.retentionLabel(this);
+        noticeRetentionChange();
         subtitle.setText(DeletionLog.totalDeleted(this) + " mensajes eliminados en total · "
                 + "Toca un registro para recuperarlo. El historial guarda el mensaje completo "
-                + "hasta que venza; no es una copia permanente.");
+                + "hasta que venza; no es una copia permanente."
+                + retentionChangeNote);
         retention.setText("Conservar vistas previas: " + period + "  ›");
         List<String> rows = new ArrayList<>();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);

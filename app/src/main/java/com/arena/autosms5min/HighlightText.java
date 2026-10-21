@@ -26,13 +26,14 @@ final class HighlightText {
 
     /**
      * @param words  words to light up; may be empty
-     * @param date   a date fragment to light up when the person asked for dates
-     *               (pass null when the message has no date to highlight)
+     * @param dates  date fragments found inside {@code body} (see
+     *               {@link DateInText}); pass null or an empty list to skip
      */
-    static CharSequence apply(Context context, String body, List<String> words, String date) {
+    static CharSequence apply(Context context, String body, List<String> words,
+                              List<String> dates) {
         String text = body == null ? "" : body;
         boolean highlightWords = words != null && !words.isEmpty();
-        boolean highlightDate = date != null && !date.isEmpty();
+        boolean highlightDate = dates != null && !dates.isEmpty();
         // Always a SpannableStringBuilder, even with nothing to highlight:
         // callers (and their tests) can always treat the result as Spanned.
         SpannableStringBuilder out = new SpannableStringBuilder(text);
@@ -45,7 +46,12 @@ final class HighlightText {
         List<int[]> covered = new ArrayList<>();
 
         if (highlightDate) {
-            style(out, text, date, darkMode, style, covered);
+            // Each fragment is a real substring of the body, so only the date
+            // itself is marked. Never pass the whole body here: it would match
+            // itself and light up the entire message.
+            for (String date : dates) {
+                style(out, text, date, darkMode, style, covered);
+            }
         }
         if (highlightWords) {
             for (String word : sortedByLengthFirst(words)) {

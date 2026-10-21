@@ -581,14 +581,15 @@ public final class MainActivity extends Activity {
                     countdown = "\n✓ Conservado · no se borra solo";
                 }
             }
-            // Only incoming messages carry a date worth lighting up.
-            String highlightDate = datesHighlighted && item.type == SmsStore.TYPE_INBOX
-                    ? item.body : null;
+            // Only incoming messages carry dates worth lighting up, and only
+            // the date fragments written inside the body (never the body).
+            List<String> highlightDates = datesHighlighted && item.type == SmsStore.TYPE_INBOX
+                    ? DateInText.find(item.body) : null;
             labelFingerprint.append(item.id).append('=').append(classification.label).append(';');
             rows.add(new InboxAdapter.Row(direction + ContactNames.twoLineLabel(this, item.address),
                     classification.display(), item.body, format.format(item.date), countdown.trim(),
                     ContactNames.avatarLetter(name), ContactNames.avatarColor(name),
-                    highlightWords, highlightDate));
+                    highlightWords, highlightDates));
         }
         noticeAutomaticChanges(retention, labelFingerprint.toString());
         adapter.setRows(rows);
@@ -773,10 +774,10 @@ public final class MainActivity extends Activity {
             final String letter;
             final int color;
             final java.util.List<String> highlightWords;
-            final String highlightDate;
+            final List<String> highlightDates;
             Row(String sender, String category, String body, String date, String status,
-                String letter, int color, java.util.List<String> highlightWords,
-                String highlightDate) {
+                String letter, int color, List<String> highlightWords,
+                List<String> highlightDates) {
                 this.sender = sender;
                 this.category = category;
                 this.body = body;
@@ -785,7 +786,7 @@ public final class MainActivity extends Activity {
                 this.letter = letter;
                 this.color = color;
                 this.highlightWords = highlightWords;
-                this.highlightDate = highlightDate;
+                this.highlightDates = highlightDates;
             }
         }
 
@@ -846,7 +847,7 @@ public final class MainActivity extends Activity {
         public void onBindViewHolder(Holder holder, int position) {
             Row row = rows.get(position);
             holder.text.bind(row.sender, row.category, row.body, row.date, row.status,
-                    row.highlightWords, row.highlightDate);
+                    row.highlightWords, row.highlightDates);
             holder.avatar.setText(row.letter);
             GradientDrawable circle = new GradientDrawable();
             circle.setShape(GradientDrawable.OVAL);

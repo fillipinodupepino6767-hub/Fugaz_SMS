@@ -1,8 +1,11 @@
 package com.arena.autosms5min;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.text.InputType;
@@ -12,6 +15,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -568,7 +572,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.28.8 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.28.9 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         Ui.text(footer, 13f);
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
@@ -759,18 +763,104 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                 "Entendido");
     }
 
+    /**
+     * Silence-timer length as a slider, like the interface-size one. The bar
+     * only offers these exact stops: 15 min, 30 min, then 1 h to 10 h in one
+     * hour steps. Nothing outside that list can be reached by dragging.
+     */
     private void showWatchTimePicker() {
-        final long[] values = {15L, 30L, 60L, 120L, 240L, 480L};
-        final String[] labels = {"15 minutos", "30 minutos", "1 hora", "2 horas", "4 horas", "8 horas"};
-        long current = AppState.watchDefaultMinutes(this);
-        int checked = 3;
-        for (int i = 0; i < values.length; i++) if (values[i] == current) checked = i;
-        ThemedDialog.singleChoice(this, "Tiempo automático",
-                "Al tocar Activar en el aviso de silencio, el sonido volverá solo después de este tiempo.",
-                labels, checked, which -> {
-                    AppState.setWatchDefaultMinutes(this, values[which]);
-                    refreshUi();
-                });
+        boolean dark = AppState.isDarkMode(this);
+        Dialog dialog = new Dialog(this);
+        final long[] values = {15L, 30L, 60L, 120L, 180L, 240L, 300L, 360L, 420L,
+                480L, 540L, 600L};
+        final String[] labels = {"15 minutos", "30 minutos", "1 hora", "2 horas", "3 horas",
+                "4 horas", "5 horas", "6 horas", "7 horas", "8 horas", "9 horas", "10 horas"};
+        LinearLayout card = ThemedDialog.card(this, dialog, "Tiempo automático",
+                "Al tocar Activar en el aviso de silencio, el sonido volverá solo después "
+                        + "de este tiempo. Desliza para elegir entre 15 minutos y 10 horas.");
+
+        SeekBar slider = new SeekBar(this);
+        slider.setMax(values.length - 1);
+        ColorStateList accent = ColorStateList.valueOf(ThemeColors.accent(dark));
+        slider.setThumbTintList(accent);
+        slider.setProgressTintList(accent);
+
+        TextView readout = new TextView(this);
+        Ui.text(readout, 24f);
+        readout.setTypeface(readout.getTypeface(), Typeface.BOLD);
+        readout.setTextColor(ThemeColors.primaryText(dark));
+        readout.setGravity(Gravity.CENTER);
+
+        final int[] chosen = {indexOfValue(values, AppState.watchDefaultMinutes(this))};
+        Runnable render = () -> {
+            int index = chosen[0];
+            readout.setText(labels[index]);
+            if (slider.getProgress() != index) slider.setProgress(index);
+        };
+        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                chosen[0] = progress;
+                render.run();
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) { }
+            @Override public void onStopTrackingTouch(SeekBar bar) { }
+        });
+
+        card.addView(readout);
+        LinearLayout.LayoutParams sliderParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        sliderParams.topMargin = dp(10);
+        card.addView(slider, sliderParams);
+
+        LinearLayout limits = new LinearLayout(this);
+        limits.setOrientation(LinearLayout.HORIZONTAL);
+        TextView minLabel = new TextView(this);
+        minLabel.setText("15 min");
+        Ui.text(minLabel, 13f);
+        minLabel.setTextColor(ThemeColors.secondaryText(dark));
+        TextView maxLabel = new TextView(this);
+        maxLabel.setText("10 h");
+        Ui.text(maxLabel, 13f);
+        maxLabel.setTextColor(ThemeColors.secondaryText(dark));
+        TextView hint = new TextView(this);
+        hint.setText("desliza para elegir");
+        Ui.text(hint, 13f);
+        hint.setTextColor(ThemeColors.secondaryText(dark));
+        hint.setGravity(Gravity.CENTER);
+        limits.addView(minLabel);
+        limits.addView(hint, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        limits.addView(maxLabel);
+        card.addView(limits);
+        render.run();
+
+        LinearLayout buttons = ThemedDialog.buttonRow(this);
+        Button cancel = ThemedDialog.textButton(this, "Cancelar", false);
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        Button apply = ThemedDialog.textButton(this, "Aplicar", true);
+        apply.setOnClickListener(v -> {
+            dialog.dismiss();
+            AppState.setWatchDefaultMinutes(this, values[chosen[0]]);
+            refreshUi();
+        });
+        buttons.addView(cancel);
+        buttons.addView(apply);
+        card.addView(buttons);
+        ThemedDialog.finish(this, dialog, card);
+    }
+
+    /** Position of the saved time on the slider; defaults to the closest stop. */
+    private static int indexOfValue(long[] values, long minutes) {
+        int best = 0;
+        long bestDistance = Long.MAX_VALUE;
+        for (int i = 0; i < values.length; i++) {
+            long distance = Math.abs(values[i] - minutes);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = i;
+            }
+        }
+        return best;
     }
 
     private void showThemePicker() {

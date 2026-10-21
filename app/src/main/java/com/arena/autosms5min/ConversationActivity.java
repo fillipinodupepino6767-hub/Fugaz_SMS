@@ -309,7 +309,8 @@ public final class ConversationActivity extends Activity {
             row.bind(who, classification.display(), item.body, format.format(item.date),
                     scheduled > 0 ? "⏳ Se elimina en " + CountdownFormatter.formatVerbose(scheduled)
                             : item.type == SmsStore.TYPE_SENT ? "Enviado" : "✓ Conservado · sin borrado automático",
-                    highlightWords, item.type == SmsStore.TYPE_INBOX ? item.body : null);
+                    highlightWords,
+                    item.type == SmsStore.TYPE_INBOX ? DateInText.find(item.body) : null);
             card.addView(row);
             if (scheduled > 0) {
                 timerUpdates.add(() -> row.updateStatus("⏳ Se elimina en "
