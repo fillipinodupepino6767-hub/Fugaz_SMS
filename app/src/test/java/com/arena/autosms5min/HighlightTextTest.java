@@ -1,6 +1,7 @@
 package com.arena.autosms5min;
 
 import android.app.Activity;
+import android.os.Looper;
 import android.text.Spanned;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
@@ -11,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
+import org.robolectric.Shadows;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
@@ -52,6 +54,15 @@ public class HighlightTextTest {
         return spans == null ? 0 : spans.length;
     }
 
+    /**
+     * SharedPreferences.apply() writes asynchronously, so the store must be
+     * flushed to the (in-memory) map before a test reads it back. Draining the
+     * main looper is what actually runs those pending writes.
+     */
+    private void idle() {
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+    }
+
     /** The highlighted text of the first span of the given class. */
     private String highlighted(CharSequence out, Class<?> type) {
         Spanned spanned = (Spanned) out;
@@ -72,8 +83,11 @@ public class HighlightTextTest {
 
     @Test public void matchingIgnoresCaseAndAccents() {
         HighlightStore.setWordsEnabled(activity, true);
+        idle();
         HighlightStore.setStyle(activity, HighlightStore.STYLE_COLOR);
+        idle();
         HighlightStore.addWord(activity, "verificación");
+        idle();
         CharSequence out = HighlightText.apply(activity,
                 "Tu VERIFICACION llego por correo",
                 HighlightStore.words(activity), null);
@@ -84,7 +98,9 @@ public class HighlightTextTest {
 
     @Test public void shortWordsMatchWholeWordsOnly() {
         HighlightStore.setStyle(activity, HighlightStore.STYLE_COLOR);
+        idle();
         HighlightStore.addWord(activity, "PIN");
+        idle();
         // "opino" must NOT light up just because it contains "pin".
         CharSequence out = HighlightText.apply(activity, "opino y PIN",
                 HighlightStore.words(activity), null);
@@ -95,10 +111,12 @@ public class HighlightTextTest {
 
     @Test public void styleChoosesColourBoldOrMarker() {
         HighlightStore.addWord(activity, "urgente");
+        idle();
         List<String> words = HighlightStore.words(activity);
         String body = "Es urgente venir";
 
         HighlightStore.setStyle(activity, HighlightStore.STYLE_COLOR);
+        idle();
         CharSequence plain = HighlightText.apply(activity, body, words, null);
         assertEquals(1, count(((Spanned) plain).getSpans(0, plain.length(),
                 ForegroundColorSpan.class)));
@@ -106,10 +124,12 @@ public class HighlightTextTest {
                 count(((Spanned) plain).getSpans(0, plain.length(), StyleSpan.class)));
 
         HighlightStore.setStyle(activity, HighlightStore.STYLE_COLOR_BOLD);
+        idle();
         CharSequence bold = HighlightText.apply(activity, body, words, null);
         assertEquals(1, count(((Spanned) bold).getSpans(0, bold.length(), StyleSpan.class)));
 
         HighlightStore.setStyle(activity, HighlightStore.STYLE_MARKER);
+        idle();
         CharSequence marker = HighlightText.apply(activity, body, words, null);
         assertEquals(1, count(((Spanned) marker).getSpans(0, marker.length(),
                 BackgroundColorSpan.class)));
@@ -120,7 +140,9 @@ public class HighlightTextTest {
 
     @Test public void dateIsHighlightedOnlyInsideIncomingText() {
         HighlightStore.setDatesEnabled(activity, true);
+        idle();
         HighlightStore.setStyle(activity, HighlightStore.STYLE_COLOR);
+        idle();
         String date = "15 de octubre";
         CharSequence out = HighlightText.apply(activity,
                 "ElXtamo es el " + date + " a las 9",
@@ -132,8 +154,11 @@ public class HighlightTextTest {
 
     @Test public void longerPhrasesWinOverShortWordsInside() {
         HighlightStore.setStyle(activity, HighlightStore.STYLE_COLOR);
+        idle();
         HighlightStore.addWord(activity, "saldo");
+        idle();
         HighlightStore.addWord(activity, "saldo insuficiente");
+        idle();
         CharSequence out = HighlightText.apply(activity, "Tu saldo insuficiente today",
                 HighlightStore.words(activity), null);
         assertEquals("la frase larga debe cubrir la corta sin partirla", 1,
@@ -143,9 +168,12 @@ public class HighlightTextTest {
 
     @Test public void wordStoreReplacesCasingInsteadOfDuplicating() {
         HighlightStore.addWord(activity, "Urgente");
+        idle();
         HighlightStore.addWord(activity, "urgente");
+        idle();
         assertEquals(1, HighlightStore.words(activity).size());
         HighlightStore.removeWord(activity, "URGENTE");
+        idle();
         assertTrue(HighlightStore.words(activity).isEmpty());
     }
 
