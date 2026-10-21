@@ -3,6 +3,36 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.8 (v0.28.8)
+
+- **Barra superior bajada a la tarjeta de búsqueda:** los cuatro iconos
+  (⚙ Configuración, ❓ Ayuda, 📦 Archivados, ⌛ Eliminados recientemente) ya no
+  están en las esquinas de arriba, que con letra grande en pantallas altas eran
+  lo más difícil de tocar. Ahora están un solo toque más abajo, detrás del botón
+  ⋯ junto al buscador, a la altura del pulgar. La cabecera se queda solo con el
+  título. El botón ✕ de limpiar búsqueda aparece únicamente cuando hay algo
+  escrito, dejando sitio al ⋯.
+- **La bandeja se actualiza sola y avisa en la línea de subtítulo:** la bandeja
+  ya se redibuja cada segundo, así que ahora también se detectan y anuncian dos
+  cambios que antes pasaban desapercibidos: que cambie la **duración del borrado**
+  (por ejemplo al pasar de 5 a 10 minutos en Configuración) y que un mensaje sea
+  **re-etiquetado** (por ejemplo de Normal a Posible spam) al añadir palabras
+  clave nuevas. El aviso aparece appended al subtítulo («♻️ duración ahora 10
+  minutos», «🔄 etiquetas actualizadas») durante un instante, sin avisos
+  emergentes ni notificaciones: el texto se actualiza solo, sin que tengas que
+  pedirlo.
+- **Resaltado de palabras y fechas dentro de los mensajes:** en Configuración →
+  Apariencia → RESALTAR EN LOS MENSAJES puedes (a) encender o apagar el
+  resaltado de tus propias palabras, (b) encender o apagar el resaltado de las
+  fechas de los mensajes entrantes y (c) elegir el estilo: Solo color, Color y
+  negrita o Fondo marcado. Añades las palabras en PALABRAS QUE SE RESALTAN. El
+  resaltado aparece en la bandeja y en las conversaciones, ignora mayúsculas y
+  tildes, y **no modifica nunca el texto real del SMS** (solo se decora una
+  copia para mostrar). Las palabras cortas se resaltan solo completas («PIN» no
+  marca «opino») y las frases largas ganan sobre las cortas.
+- Ayuda: la ventanita 5 de la guía explica el nuevo botón ⋯ y dónde está el
+  resaltado. La guía sigue teniendo 10 ventanitas.
+
 ## Novedades de la versión 0.28.7 (v0.28.7)
 
 - **Ventana de reinicio grande y obligatoria:** sustituye la tarjeta pegada a la

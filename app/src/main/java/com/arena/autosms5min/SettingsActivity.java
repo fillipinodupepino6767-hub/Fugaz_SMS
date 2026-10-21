@@ -54,6 +54,9 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
     private Button changePinButton;
     private Button bioButton;
     private Button sizeButton;
+    private Button highlightWordsButton;
+    private Button highlightDatesButton;
+    private Button highlightStyleButton;
     private ScrollView scroll;
     private final Map<String, View> helpAnchors = new HashMap<>();
     private final List<TextView> notes = new ArrayList<>();
@@ -442,6 +445,38 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                 }));
         root.addView(fontButton);
 
+        // Highlighting: colour words and/or dates inside the messages themselves.
+        TextView anchor_resaltado = sectionTitle("Resaltar en los mensajes");
+        helpAnchors.put("resaltado", anchor_resaltado);
+        root.addView(anchor_resaltado);
+        root.addView(noteText("Las palabras se marcan dentro del texto del mensaje. "
+                + "El SMS de verdad no se modifica: solo se ve coloreado."));
+
+        Button highlightWords = actionButton("");
+        highlightWordsButton = highlightWords;
+        highlightWords.setOnClickListener(v -> {
+            HighlightStore.setWordsEnabled(this, !HighlightStore.wordsEnabled(this));
+            refreshUi();
+        });
+        root.addView(highlightWords);
+
+        Button highlightDates = actionButton("");
+        highlightDatesButton = highlightDates;
+        highlightDates.setOnClickListener(v -> {
+            HighlightStore.setDatesEnabled(this, !HighlightStore.datesEnabled(this));
+            refreshUi();
+        });
+        root.addView(highlightDates);
+
+        Button highlightStyle = actionButton("");
+        highlightStyleButton = highlightStyle;
+        highlightStyle.setOnClickListener(v -> showHighlightStylePicker());
+        root.addView(highlightStyle);
+
+        Button highlightWordsList = actionButton("PALABRAS QUE SE RESALTAN");
+        highlightWordsList.setOnClickListener(v -> showHighlightWordManager());
+        root.addView(highlightWordsList);
+
 
                 root.addView(sectionTitle("Privacidad"));
         privButton = actionButton("");
@@ -533,7 +568,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.28.7 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.28.8 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         Ui.text(footer, 13f);
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
@@ -638,6 +673,14 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
 
     private void refreshUi() {
         maybeNudge();
+        if (highlightWordsButton != null) {
+            highlightWordsButton.setText("RESALTAR MIS PALABRAS: "
+                    + (HighlightStore.wordsEnabled(this) ? "SÍ" : "NO"));
+            highlightDatesButton.setText("RESALTAR FECHAS DE LOS ENTRANTES: "
+                    + (HighlightStore.datesEnabled(this) ? "SÍ" : "NO"));
+            highlightStyleButton.setText("CÓMO SE RESALTA: "
+                    + HighlightStore.styleLabel(HighlightStore.style(this)));
+        }
         if (privButton != null) {
             privButton.setText(AppLock.isSet(this)
                     ? ("BLOQUEO AL ABRIR: " + (AppLock.enabled(this)
@@ -913,6 +956,64 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
                     Toast.makeText(this, ContactNames.displayName(this, sender) + " desbloqueado.",
                             Toast.LENGTH_SHORT).show();
                     refreshUi();
+                });
+    }
+
+    private void showHighlightStylePicker() {
+        final String[] labels = {"Solo color", "Color y negrita", "Fondo marcado"};
+        final int[] values = {HighlightStore.STYLE_COLOR,
+                HighlightStore.STYLE_COLOR_BOLD, HighlightStore.STYLE_MARKER};
+        int current = HighlightStore.style(this);
+        int selected = current;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) selected = i;
+        }
+        ThemedDialog.singleChoice(this, "Cómo se resalta",
+                "Elige cómo se ven las palabras marcadas. Puedes cambiarlo cuando quieras.",
+                labels, selected, which -> {
+                    HighlightStore.setStyle(this, values[which]);
+                    refreshUi();
+                });
+    }
+
+    private void showHighlightWordManager() {
+        final List<String> words = HighlightStore.words(this);
+        List<String> rows = new ArrayList<>();
+        rows.add("➕ Añadir palabra que se resalte");
+        for (String word : words) {
+            rows.add("🔎 " + word + "  (toca para quitar)");
+        }
+        ThemedDialog.items(this, "Palabras que se resalten",
+                "Estas palabras se marcan dentro de los mensajes, sin cambiar el texto real. "
+                        + "Se comparan sin mayúsculas ni tildes. Ejemplos: el nombre de tu banco, "
+                        + "una tienda, «urgente» o una palabra que uses mucho.",
+                rows.toArray(new String[0]), "Cerrar", which -> {
+                    if (which == 0) {
+                        ThemedDialog.input(this, "Añadir palabra que se resalte",
+                                "Por ejemplo: HSBC, urgente o el nombre de tu farmacia. Se compara sin "
+                                        + "mayúsculas ni tildes.",
+                                "", android.text.InputType.TYPE_CLASS_TEXT,
+                                null, "Cancelar", "Añadir", null, value -> {
+                                    String word = value == null ? "" : value.trim();
+                                    if (word.isEmpty()) {
+                                        Toast.makeText(this, "Escribe una palabra.",
+                                                Toast.LENGTH_SHORT).show();
+                                        return;
+                                    }
+                                    HighlightStore.addWord(this, word);
+                                    Toast.makeText(this, "«" + word + "» se resaltará.",
+                                            Toast.LENGTH_SHORT).show();
+                                    showHighlightWordManager();
+                                });
+                    } else {
+                        final String word = words.get(which - 1);
+                        ThemedDialog.confirm(this, "Quitar «" + word + "»",
+                                "Esta palabra dejaría de resaltarse. El resto sigue igual.",
+                                "Cancelar", "Quitar", () -> {
+                                    HighlightStore.removeWord(this, word);
+                                    showHighlightWordManager();
+                                });
+                    }
                 });
     }
 

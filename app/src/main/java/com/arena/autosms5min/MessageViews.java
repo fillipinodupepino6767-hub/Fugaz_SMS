@@ -5,6 +5,8 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.List;
+
 /** Separate semantic blocks; never inserts spaces/newlines into the actual SMS. */
 final class MessageViews extends LinearLayout {
     private final TextView sender;
@@ -36,10 +38,20 @@ final class MessageViews extends LinearLayout {
     }
 
     void bind(String from, String label, String text, String timestamp, String countdown) {
+        bind(from, label, text, timestamp, countdown, null, null);
+    }
+
+    /**
+     * Binds a row and, when the person asked for it, highlights their own
+     * words inside the body and/or the date inside the text. The highlight is
+     * applied to a display copy only: the stored SMS is never touched.
+     */
+    void bind(String from, String label, String text, String timestamp, String countdown,
+              List<String> highlightWords, String highlightDate) {
         sender.setText(from);
         category.setText(label);
         category.setVisibility(label.isEmpty() ? View.GONE : View.VISIBLE);
-        body.setText(text);
+        body.setText(HighlightText.apply(getContext(), text, highlightWords, highlightDate));
         date.setText(timestamp);
         updateStatus(countdown);
     }
