@@ -51,7 +51,7 @@ final class MessageViews extends LinearLayout {
         sender.setText(from);
         category.setText(label);
         category.setVisibility(label.isEmpty() ? View.GONE : View.VISIBLE);
-        body.setText(HighlightText.apply(getContext(), text, highlightWords, highlightDate));
+        body.setText(HighlightText.apply(getContext(), text, highlightWords, highlightDates));
         date.setText(timestamp);
         updateStatus(countdown);
     }
