@@ -175,13 +175,24 @@ public class HighlightTextTest {
         String body = "PHILLIP LE GRAY VARGAS la CCSS recuerda su cita PRESENCIAL: "
                 + "HOSPITAL SAN RAFAEL DE ALAJUEL, ODONTOLOGIA GENERAL el 19/10/2026 02:00 PM.";
         List<String> dates = DateInText.find(body);
-        assertEquals("debe detectar la fecha numérica", 1, dates.size());
-        assertEquals("19/10/2026", dates.get(0));
+        // The body really contains two date fragments: 19/10/2026 and 02:00 PM.
+        assertEquals("debe detectar la fecha y la hora, y nada más", 2, dates.size());
+        assertTrue(dates.contains("19/10/2026"));
+        assertTrue(dates.contains("02:00 PM"));
         CharSequence out = HighlightText.apply(activity, body,
                 Collections.<String>emptyList(), dates);
-        assertEquals("solo la fecha se resalta, no todo el mensaje", 1,
+        assertEquals("solo los fragmentos de fecha se resaltan, no todo el mensaje", 2,
                 count(((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class)));
         assertEquals("19/10/2026", highlighted(out, ForegroundColorSpan.class));
+        // The opening sentence stays unhighlighted: the first span must begin
+        // near the date at the end, not at the start of the message.
+        Spanned spanned = (Spanned) out;
+        Object[] spans = spanned.getSpans(0, out.length(), ForegroundColorSpan.class);
+        int firstStart = spanned.getSpanStart(spans[0]);
+        assertTrue("la frase inicial no debe estar resaltada (empieza en " + firstStart + ")",
+                firstStart > 60);
+        assertTrue("el resaltado debe acabar antes del final del mensaje",
+                spanned.getSpanEnd(spans[0]) < out.length());
     }
 
     @Test public void dateFinderLeavesOrdinaryTextAlone() {
