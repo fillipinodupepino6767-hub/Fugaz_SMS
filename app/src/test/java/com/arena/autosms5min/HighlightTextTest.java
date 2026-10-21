@@ -52,6 +52,16 @@ public class HighlightTextTest {
         return spans == null ? 0 : spans.length;
     }
 
+    /** The highlighted text of the first span of the given class. */
+    private String highlighted(CharSequence out, Class<?> type) {
+        Spanned spanned = (Spanned) out;
+        Object[] spans = spanned.getSpans(0, out.length(), type);
+        assertTrue("se esperaba al menos un resaltado de tipo " + type.getSimpleName(),
+                count(spans) > 0);
+        return out.subSequence(spanned.getSpanStart(spans[0]),
+                spanned.getSpanEnd(spans[0])).toString();
+    }
+
     @Test public void plainTextIsLeftUntouchedWhenNothingIsConfigured() {
         String body = "Tu verificacion es 1234";
         CharSequence out = HighlightText.apply(activity, body,
@@ -67,12 +77,9 @@ public class HighlightTextTest {
         CharSequence out = HighlightText.apply(activity,
                 "Tu VERIFICACION llego por correo",
                 HighlightStore.words(activity), null);
-        ForegroundColorSpan[] spans =
-                ((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class);
         assertEquals("la palabra debe resaltarse aunque cambie mayúsculas y tilde", 1,
-                count(spans));
-        assertEquals("VERIFICACION", out.subSequence(spans[0].getSpanStart(),
-                spans[0].getSpanEnd()).toString());
+                count(((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class)));
+        assertEquals("VERIFICACION", highlighted(out, ForegroundColorSpan.class));
     }
 
     @Test public void shortWordsMatchWholeWordsOnly() {
@@ -81,11 +88,9 @@ public class HighlightTextTest {
         // "opino" must NOT light up just because it contains "pin".
         CharSequence out = HighlightText.apply(activity, "opino y PIN",
                 HighlightStore.words(activity), null);
-        ForegroundColorSpan[] spans =
-                ((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class);
-        assertEquals(1, count(spans));
-        assertEquals("PIN", out.subSequence(spans[0].getSpanStart(),
-                spans[0].getSpanEnd()).toString());
+        assertEquals(1, count(((Spanned) out).getSpans(0, out.length(),
+                ForegroundColorSpan.class)));
+        assertEquals("PIN", highlighted(out, ForegroundColorSpan.class));
     }
 
     @Test public void styleChoosesColourBoldOrMarker() {
@@ -120,11 +125,9 @@ public class HighlightTextTest {
         CharSequence out = HighlightText.apply(activity,
                 "ElXtamo es el " + date + " a las 9",
                 Collections.<String>emptyList(), date);
-        ForegroundColorSpan[] spans =
-                ((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class);
-        assertEquals(1, count(spans));
-        assertEquals(date, out.subSequence(spans[0].getSpanStart(),
-                spans[0].getSpanEnd()).toString());
+        assertEquals(1, count(((Spanned) out).getSpans(0, out.length(),
+                ForegroundColorSpan.class)));
+        assertEquals(date, highlighted(out, ForegroundColorSpan.class));
     }
 
     @Test public void longerPhrasesWinOverShortWordsInside() {
@@ -133,11 +136,9 @@ public class HighlightTextTest {
         HighlightStore.addWord(activity, "saldo insuficiente");
         CharSequence out = HighlightText.apply(activity, "Tu saldo insuficiente today",
                 HighlightStore.words(activity), null);
-        ForegroundColorSpan[] spans =
-                ((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class);
-        assertEquals("la frase larga debe cobrir la corta sin partirla", 1, count(spans));
-        assertEquals("saldo insuficiente", out.subSequence(spans[0].getSpanStart(),
-                spans[0].getSpanEnd()).toString());
+        assertEquals("la frase larga debe cubrir la corta sin partirla", 1,
+                count(((Spanned) out).getSpans(0, out.length(), ForegroundColorSpan.class)));
+        assertEquals("saldo insuficiente", highlighted(out, ForegroundColorSpan.class));
     }
 
     @Test public void wordStoreReplacesCasingInsteadOfDuplicating() {
