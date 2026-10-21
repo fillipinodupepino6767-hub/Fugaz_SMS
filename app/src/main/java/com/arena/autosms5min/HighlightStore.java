@@ -21,9 +21,13 @@ import java.util.Set;
  */
 final class HighlightStore {
     private static final String PREFS = "highlight_settings";
-    private static final String KEY_WORDS = "words";
-    private static final String KEY_DATES = "dates";
-    private static final String KEY_STYLE = "style";
+    // Each key holds exactly one type. Sharing a name between the boolean
+    // switch and the word list made SharedPreferences throw
+    // "Boolean cannot be cast to Set" the moment a person toggled highlighting.
+    private static final String KEY_WORDS_ENABLED = "words_enabled";
+    private static final String KEY_DATES_ENABLED = "dates_enabled";
+    private static final String KEY_WORD_LIST = "word_list";
+    private static final String KEY_STYLE = "highlight_style";
     private static final int MAX_WORDS = 60;
     private static final int MAX_LENGTH = 40;
 
@@ -36,20 +40,20 @@ final class HighlightStore {
 
     /** Highlight the person's own words. On by default: highlighting is the point. */
     static boolean wordsEnabled(Context context) {
-        return prefs(context).getBoolean(KEY_WORDS, true);
+        return prefs(context).getBoolean(KEY_WORDS_ENABLED, true);
     }
 
     static void setWordsEnabled(Context context, boolean enabled) {
-        prefs(context).edit().putBoolean(KEY_WORDS, enabled).apply();
+        prefs(context).edit().putBoolean(KEY_WORDS_ENABLED, enabled).apply();
     }
 
     /** Highlight the date of incoming messages. Off by default: it is noisier. */
     static boolean datesEnabled(Context context) {
-        return prefs(context).getBoolean(KEY_DATES, false);
+        return prefs(context).getBoolean(KEY_DATES_ENABLED, false);
     }
 
     static void setDatesEnabled(Context context, boolean enabled) {
-        prefs(context).edit().putBoolean(KEY_DATES, enabled).apply();
+        prefs(context).edit().putBoolean(KEY_DATES_ENABLED, enabled).apply();
     }
 
     static int style(Context context) {
@@ -70,7 +74,7 @@ final class HighlightStore {
 
     static List<String> words(Context context) {
         if (context == null) return new ArrayList<>();
-        Set<String> stored = prefs(context).getStringSet(KEY_WORDS, Collections.emptySet());
+        Set<String> stored = prefs(context).getStringSet(KEY_WORD_LIST, Collections.emptySet());
         List<String> result = new ArrayList<>(stored);
         Collections.sort(result, String.CASE_INSENSITIVE_ORDER);
         return result;
@@ -83,11 +87,11 @@ final class HighlightStore {
     static void removeWord(Context context, String word) {
         if (context == null || word == null) return;
         Set<String> updated = new LinkedHashSet<>(
-                prefs(context).getStringSet(KEY_WORDS, Collections.emptySet()));
+                prefs(context).getStringSet(KEY_WORD_LIST, Collections.emptySet()));
         for (String existing : new ArrayList<>(updated)) {
             if (existing.equalsIgnoreCase(word.trim())) updated.remove(existing);
         }
-        prefs(context).edit().putStringSet(KEY_WORDS, updated).apply();
+        prefs(context).edit().putStringSet(KEY_WORD_LIST, updated).apply();
     }
 
     private static void add(Context context, String word) {
@@ -97,13 +101,13 @@ final class HighlightStore {
         if (clean.length() > MAX_LENGTH) clean = clean.substring(0, MAX_LENGTH).trim();
         if (clean.isEmpty()) return;
         Set<String> updated = new LinkedHashSet<>(
-                prefs(context).getStringSet(KEY_WORDS, Collections.emptySet()));
+                prefs(context).getStringSet(KEY_WORD_LIST, Collections.emptySet()));
         for (String existing : new ArrayList<>(updated)) {
             if (existing.equalsIgnoreCase(clean)) updated.remove(existing);
         }
         updated.add(clean);
         while (updated.size() > MAX_WORDS) updated.remove(updated.iterator().next());
-        prefs(context).edit().putStringSet(KEY_WORDS, updated).apply();
+        prefs(context).edit().putStringSet(KEY_WORD_LIST, updated).apply();
     }
 
     private static SharedPreferences prefs(Context context) {

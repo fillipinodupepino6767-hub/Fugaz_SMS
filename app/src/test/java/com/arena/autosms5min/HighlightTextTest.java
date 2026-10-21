@@ -177,9 +177,28 @@ public class HighlightTextTest {
         assertTrue(HighlightStore.words(activity).isEmpty());
     }
 
+    @Test public void togglingTheSwitchesDoesNotCorruptTheWordList() {
+        // Regression: the boolean switch and the word list once shared the
+        // prefs key "words", so toggling highlighting made the word list read
+        // throw "Boolean cannot be cast to Set". Each key holds one type only.
+        HighlightStore.setWordsEnabled(activity, false);
+        idle();
+        HighlightStore.addWord(activity, "banco");
+        idle();
+        assertEquals("la lista sobrevive al interruptor apagado", 1,
+                HighlightStore.words(activity).size());
+        HighlightStore.setWordsEnabled(activity, true);
+        idle();
+        HighlightStore.setDatesEnabled(activity, true);
+        idle();
+        assertEquals("banco", HighlightStore.words(activity).get(0));
+        assertTrue(HighlightStore.wordsEnabled(activity));
+        assertTrue(HighlightStore.datesEnabled(activity));
+    }
+
     @Test public void styleFallsBackToADefaultOutsideTheStoredRange() {
         activity.getSharedPreferences("highlight_settings", Activity.MODE_PRIVATE)
-                .edit().putInt("style", 99).apply();
+                .edit().putInt("highlight_style", 99).apply();
         assertEquals(HighlightStore.STYLE_COLOR_BOLD, HighlightStore.style(activity));
         assertTrue(Arrays.asList("Solo color", "Color y negrita", "Fondo marcado")
                 .contains(HighlightStore.styleLabel(HighlightStore.STYLE_MARKER)));
