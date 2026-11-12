@@ -326,6 +326,23 @@ public final class ConversationActivity extends Activity {
             share.setOnClickListener(v -> shareMessage(item));
             actions.addView(share);
 
+            // Copy the message text. A bank/OTP message is wiped from the
+            // clipboard after a minute so the code does not stay there.
+            Button copy = messageAction("Copiar");
+            copy.setOnClickListener(v -> {
+                boolean sensitive = MessageClassifier.LABEL_IMPORTANT.equals(classification.label);
+                Clipboard.copyText(this, item.body, "Mensaje", sensitive);
+            });
+            actions.addView(copy);
+
+            // The link button only appears when the message really has links.
+            final List<String> links = Clipboard.links(item.body);
+            if (!links.isEmpty()) {
+                Button linkButton = messageAction("Enlaces (" + links.size() + ")");
+                linkButton.setOnClickListener(v -> showLinkChooser(item, links));
+                actions.addView(linkButton);
+            }
+
             if (item.type == SmsStore.TYPE_INBOX) {
                 long dueAt = DeleteRegistry.dueAt(this, item.id);
                 if (dueAt > 0L) {
@@ -447,6 +464,39 @@ public final class ConversationActivity extends Activity {
     }
 
     /** Shares through any installed app; the chosen app may use Wi-Fi or mobile data. */
+    /**
+     * Lists the links of a message so one can be copied. Shortened links are
+     * flagged: the app cannot expand them (it never uses the internet), but it
+     * can warn that the destination is hidden.
+     */
+    private void showLinkChooser(SmsStore.SmsItem item, List<String> links) {
+        final String[] rows = new String[links.size()];
+        for (int i = 0; i < links.size(); i++) {
+            String link = links.get(i);
+            rows[i] = (Clipboard.isShortener(link) ? "⚠️ " : "🔗 ") + link;
+        }
+        ThemedDialog.items(this, "Enlaces del mensaje",
+                "Toca un enlace para copiarlo al portapapeles."
+                        + (anyShortener(links)
+                                ? "\n\n⚠️ Los enlaces acortados pueden llevar a cualquier página. "
+                                + "Esta app no usa internet, así que no puede mostrarte a dónde "
+                                + "apuntan: abre solo los que confíes."
+                                : ""),
+                rows, "Cerrar", which -> {
+                    if (which >= 0 && which < links.size()) {
+                        String link = links.get(which);
+                        Clipboard.copyLink(this, link, Clipboard.isShortener(link));
+                    }
+                });
+    }
+
+    private boolean anyShortener(List<String> links) {
+        for (String link : links) {
+            if (Clipboard.isShortener(link)) return true;
+        }
+        return false;
+    }
+
     private void shareMessage(SmsStore.SmsItem item) {
         Intent share = new Intent(Intent.ACTION_SEND);
         share.setType("text/plain");

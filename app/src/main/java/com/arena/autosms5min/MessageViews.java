@@ -23,6 +23,10 @@ final class MessageViews extends LinearLayout {
         category = field(12, ThemeColors.accent(dark), 4);
         body = field(16, ThemeColors.primaryText(dark), 10);
         body.setLineSpacing(Ui.dp(context, 2), 1.18f);
+        // The body can be selected with a finger so the phone's own
+        // "Copiar / Compartir" menu appears, just like in other messaging apps.
+        // Highlighting still works: the spans live in the text we hand over.
+        body.setTextIsSelectable(true);
         date = field(12, ThemeColors.secondaryText(dark), 10);
         status = field(12, ThemeColors.accent(dark), 5);
     }

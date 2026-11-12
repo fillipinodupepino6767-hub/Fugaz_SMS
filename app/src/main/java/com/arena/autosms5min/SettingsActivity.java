@@ -259,6 +259,15 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         setupButton.setOnClickListener(v -> showDefaultSmsWarning());
         root.addView(setupButton);
 
+        // One button that leaves everything ready: the recommended internal
+        // values plus the five system steps, chained one after the other.
+        Button allowAll = actionButton("⚡ PERMITIR TODO (DEJAR LISTO)");
+        allowAll.setOnClickListener(v -> SetupHelper.allowEverything(this, REQUEST_SMS_ROLE));
+        root.addView(allowAll);
+        root.addView(noteText("Deja los ajustes internos en los valores recomendados y te va "
+                + "preguntando por los permisos del sistema, uno por uno. Al final te "
+                + "muestra qué quedó listo y qué falta."));
+
                 TextView anchor_mensajes = sectionTitle("Mensajes");
         helpAnchors.put("mensajes", anchor_mensajes);
         root.addView(anchor_mensajes);
@@ -572,7 +581,7 @@ public final class SettingsActivity extends Activity implements HelpTour.Host {
         root.addView(classification);
 
         TextView footer = new TextView(this);
-        footer.setText("Versión 0.28.9 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
+        footer.setText("Versión 0.28.10 beta · Solo SMS de texto\nNo recibe chats por internet (Google Mensajes o iPhone).");
         Ui.text(footer, 13f);
         footer.setTextColor(ThemeColors.secondaryText(dark));
         footer.setPadding(dp(4), dp(18), dp(4), 0);
