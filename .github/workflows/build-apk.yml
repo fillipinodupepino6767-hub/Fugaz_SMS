@@ -69,6 +69,38 @@ jobs:
                   for failure in case.findall('failure'):
                       annotate(case.get('name', '') + ': ' + (failure.text or '')[:12000])
 
+      - name: Comprobar que el APK está firmado
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK" ]; then
+            echo "::error::No se encontró el APK en $APK"
+            exit 1
+          fi
+          # apksigner verifica la firma sin instalar nada. Un APK sin firmar o
+          # con la firma equivocada NO se puede instalar en el teléfono, así que
+          # aquí lo detectamos antes de publicarlo.
+          if [ -n "${ANDROID_HOME:-}" ] && [ -x "${ANDROID_HOME}/build-tools/36.0.0/apksigner" ]; then
+            APKSIGNER="${ANDROID_HOME}/build-tools/36.0.0/apksigner"
+          else
+            APKSIGNER=$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -name apksigner -type f 2>/dev/null | sort -r | head -1 || true)
+          fi
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::No se encontró apksigner; no se puede comprobar la firma"
+            exit 1
+          fi
+          "$APKSIGNER" verify --print-certs "$APK" | head -40
+          echo "Firma verificada correctamente."
+
+          # Identity of the package, so an install problem on the phone can be
+          # checked against these values without downloading anything.
+          AAPT=$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -name aapt2 -type f 2>/dev/null | sort -r | head -1 || true)
+          if [ -n "$AAPT" ]; then
+            echo "::group::Identidad del paquete"
+            "$AAPT" dump badging "$APK" 2>/dev/null | grep -E "^package|sdkVersion|targetSdkVersion" || true
+            echo "::endgroup::"
+          fi
+
       - name: Guardar el APK para descargarlo
         uses: actions/upload-artifact@v4
         with:

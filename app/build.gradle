@@ -9,6 +9,17 @@ def releaseKeyAlias = System.getenv('SMS_KEY_ALIAS')
 def releaseKeyPassword = System.getenv('SMS_KEY_PASSWORD')
 def hasReleaseSigning = releaseStorePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
 
+// A release build without the signing secrets would quietly produce an
+// UNSIGNED APK, which Android refuses to install ("no se puede instalar el
+// paquete"). Failing the build loudly is much easier to diagnose than a
+// mysterious install error on the phone.
+if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('assemblerelease') }
+        && !hasReleaseSigning) {
+    throw new GradleException(
+            "Faltan los secretos de firma (SMS_KEYSTORE_PATH / SMS_KEYSTORE_PASSWORD / " +
+            "SMS_KEY_ALIAS / SMS_KEY_PASSWORD). No se puede generar un APK instalable.")
+}
+
 android {
     namespace 'com.arena.autosms5min'
     compileSdk 36
@@ -18,8 +29,8 @@ android {
         applicationId 'com.arena.autosms5min'
         minSdk 23
         targetSdk 36
-        versionCode 48
-        versionName '0.28.10'
+        versionCode 49
+        versionName '0.28.11'
     }
 
     signingConfigs {
