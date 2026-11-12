@@ -3,6 +3,16 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.11 (v0.28.11)
+
+- **El APK ahora se comprueba antes de publicarse:** si por algún motivo
+  faltara la clave de firma, la compilación **falla con un mensaje claro** en
+  vez de generar en silencio un APK sin firmar que Android rechaza al
+  instalar. Además, cada build verifica la firma con `apksigner` y publica la
+  identidad del paquete (nombre, versión, SDK mínimo y certificado), para poder
+  diagnosticar un problema de instalación sin adivinar.
+- Sin cambios de comportamiento: la app funciona igual que en v0.28.10.
+
 ## Novedades de la versión 0.28.10 (v0.28.10)
 
 - **Copiar el texto de un mensaje:** botón COPIAR en la fila de acciones de cada
