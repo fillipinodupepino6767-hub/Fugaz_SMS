@@ -98,6 +98,20 @@ public final class ComposeActivity extends Activity {
         bodyBox.setGravity(Gravity.TOP);
         card.addView(bodyBox);
 
+        // Paste from the phone clipboard. No permission is needed: Android
+        // only lets an app read the clipboard while it is on screen, and this
+        // button is only usable from this very screen.
+        Button paste = new Button(this);
+        paste.setText("📋 PEGAR DEL PORTAPAPELES");
+        Ui.styleActionButton(paste, dark);
+        paste.setMinHeight(dp(46));
+        Ui.text(paste, 14f);
+        paste.setOnClickListener(v -> pasteFromClipboard());
+        LinearLayout.LayoutParams pasteParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        pasteParams.setMargins(0, dp(6), 0, dp(6));
+        card.addView(paste, pasteParams);
+
         Button send = new Button(this);
         send.setText("ENVIAR SMS");
         Ui.styleActionButton(send, dark);
@@ -192,6 +206,22 @@ public final class ComposeActivity extends Activity {
             nameLine.setVisibility(View.VISIBLE);
             nameLine.setText("👤 " + label);
         }
+    }
+
+    /**
+     * Puts the clipboard text into the message box. The clipboard is only
+     * readable while this screen is in front of the person, which is exactly
+     * when this button can be pressed.
+     */
+    private void pasteFromClipboard() {
+        String text = Clipboard.read(this);
+        if (text.isEmpty()) {
+            Toast.makeText(this, "El portapapeles está vacío.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        bodyBox.setText(text);
+        bodyBox.setSelection(text.length());
+        Toast.makeText(this, "Pegado ✓", Toast.LENGTH_SHORT).show();
     }
 
     private void send() {

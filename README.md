@@ -3,6 +3,35 @@
 > **Estado:** prototipo funcional para SMS de texto en Android 11–16. No es una
 > sustitución completa de Google Mensajes para MMS o RCS.
 
+## Novedades de la versión 0.28.10 (v0.28.10)
+
+- **Copiar el texto de un mensaje:** botón COPIAR en la fila de acciones de cada
+  mensaje de una conversación, y «Copiar texto» en el menú que sale al mantener
+  presionado un mensaje en la bandeja. Además, el texto del mensaje ahora se
+  puede **seleccionar con el dedo** y copiar con el menú normal de Android,
+  como en las otras apps de mensajes.
+- **Copiar enlaces:** si un mensaje tiene direcciones web, aparece un botón
+  **ENLACES** que lista las que encontró y al tocar una se copia. Si el mensaje
+  no tiene enlaces, el botón no aparece. Los enlaces acortados (bit.ly, tinyurl,
+  t.co…) se avisan con un ⚠️ porque pueden llevar a cualquier página: **esta app
+  no usa internet, así que no puede mostrarte a dónde apuntan**, y abrir uno es
+  decisión tuya.
+- **Portapapeles más seguro:** si copias el texto de un mensaje marcado como
+  Importante (un código del banco, un OTP), la app **borra el portapapeles a los
+  60 segundos** y te avisa, para que el código no quede pegado para siempre. Los
+  mensajes normales se quedan como siempre.
+- **📋 PEGAR del portapapeles:** al escribir un SMS nuevo, un botón pega lo que
+  tengas copiado. No pide ningún permiso: Android solo deja leer el portapapeles
+  mientras la pantalla está delante de ti.
+- **⚡ PERMITIR TODO (DEJAR LISTO):** un botón que deja la app lista en un solo
+  paso. Aplica los ajustes internos recomendados (5 minutos de borrado, tema
+  automático, tamaño 100 %, sin negrita — **solo si aún están en su valor de
+  fábrica**, nunca pisa algo que tú hayas cambiado) y después encadena los 5
+  pasos del sistema: ajustes restringidos, permisos, notificaciones, alarmas
+  exactas y app SMS predeterminada. Tú solo aceptas los avisos de Android. Al
+  final te muestra ✅/❌ de lo que quedó listo y lo que falta.
+- La app **sigue sin permiso de internet**: todo esto funciona sin conexión.
+
 ## Novedades de la versión 0.28.9 (v0.28.9)
 
 - **Arreglo del resaltado (se nota enseguida):** en v0.28.8, al activar «RESALTAR

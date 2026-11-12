@@ -478,16 +478,61 @@ public final class MainActivity extends Activity {
     private void showOptions(int position) {
         if (position < 0 || position >= shownItems.size()) return;
         SmsStore.SmsItem item = shownItems.get(position);
+        // The link option only appears when the message really has links.
+        final List<String> links = Clipboard.links(item.body);
+        List<String> rows = new ArrayList<>();
+        rows.add("Abrir conversación");
+        rows.add("Copiar texto");
+        if (!links.isEmpty()) rows.add("Copiar enlace (" + links.size() + ")");
+        rows.add("Archivar");
+        rows.add("Eliminar este SMS");
         ThemedDialog.items(this, ContactNames.displayName(this, item.address),
                 "Elige una acción para este mensaje.",
-                new String[]{"Abrir conversación", "Archivar", "Eliminar este SMS"},
+                rows.toArray(new String[0]),
                 "Cancelar", which -> {
                     if (which == 0) openConversation(position);
                     else if (which == 1) {
+                        MessageClassifier.Result classification =
+                                MessageClassifier.classify(this, item.body);
+                        boolean sensitive = MessageClassifier.LABEL_IMPORTANT
+                                .equals(classification.label);
+                        Clipboard.copyText(this, item.body, "Mensaje", sensitive);
+                    } else if (which == 2 && !links.isEmpty()) {
+                        showLinkChooser(item, links);
+                    } else if (which == 2) {
                         archiveMessage(item);
                         refresh();
                     } else {
                         confirmDelete(item);
+                    }
+                });
+    }
+
+    /**
+     * Lists the links of a message so one can be copied. Shortened links are
+     * flagged, because this app never uses the internet and therefore cannot
+     * show where they really lead.
+     */
+    private void showLinkChooser(SmsStore.SmsItem item, List<String> links) {
+        final String[] rows = new String[links.size()];
+        boolean anyShortener = false;
+        for (int i = 0; i < links.size(); i++) {
+            String link = links.get(i);
+            boolean shortener = Clipboard.isShortener(link);
+            anyShortener = anyShortener || shortener;
+            rows[i] = (shortener ? "⚠️ " : "🔗 ") + link;
+        }
+        ThemedDialog.items(this, "Enlaces del mensaje",
+                "Toca un enlace para copiarlo al portapapeles."
+                        + (anyShortener
+                                ? "\n\n⚠️ Los enlaces acortados pueden llevar a cualquier página. "
+                                + "Esta app no usa internet, así que no puede mostrarte a dónde "
+                                + "apuntan: abre solo los que confíes."
+                                : ""),
+                rows, "Cerrar", which -> {
+                    if (which >= 0 && which < links.size()) {
+                        String link = links.get(which);
+                        Clipboard.copyLink(this, link, Clipboard.isShortener(link));
                     }
                 });
     }

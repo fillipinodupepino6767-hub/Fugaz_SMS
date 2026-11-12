@@ -107,6 +107,78 @@ final class SetupHelper {
         }
     }
 
+    /**
+     * "Permitir todo": one button that puts the app in a working state.
+     *
+     * <p>It does two things:
+     * <ol>
+     *   <li>applies the recommended internal values (the ones that already
+     *       work well on every phone), and</li>
+     *   <li>chains the five setup steps that only the person can accept, one
+     *       after the other, so nothing is left half-done.</li>
+     * </ol>
+     *
+     * <p>It never changes anything the person chose on purpose: only values
+     * still at their factory default are touched.
+     */
+    static void allowEverything(Activity activity, int roleRequestCode) {
+        applyRecommendedValues(activity);
+        ThemedDialog.confirm(activity, "⚡ Permitir todo",
+                "Voy a dejar la app lista en un solo paso:\n\n"
+                        + "• Ajustes internos recomendados (5 minutos de borrado, tema "
+                        + "automático, tamaño 100 %, sin negrita).\n"
+                        + "• Después te irá preguntando por los permisos del sistema: "
+                        + "ajustes restringidos, permisos, notificaciones, alarmas exactas "
+                        + "y app SMS predeterminada.\n\n"
+                        + "Tú solo tienes que ir aceptando los avisos de Android.\n\n"
+                        + "Si algo no lo quieres, puedes cancelarlo y seguir normal.",
+                "Ahora no", "Vamos", () -> runAutoSetup(activity, roleRequestCode));
+    }
+
+    /**
+     * Sets the internal options to the values that work best out of the box.
+     * Options the person already changed on purpose are left alone, so this is
+     * safe to run more than once.
+     */
+    static void applyRecommendedValues(Context context) {
+        // Only touch what is still untouched.
+        if (!context.getSharedPreferences("app_state", Context.MODE_PRIVATE)
+                .contains("retention_ms")) {
+            AppState.setRetentionMillis(context, AppState.FIVE_MINUTES);
+        }
+        if (!context.getSharedPreferences("app_state", Context.MODE_PRIVATE)
+                .contains("theme_mode")) {
+            AppState.setThemeMode(context, AppState.THEME_SYSTEM);
+        }
+        if (!context.getSharedPreferences("app_state", Context.MODE_PRIVATE)
+                .contains("ui_scale")) {
+            AppState.setUiScale(context, 1f);
+        }
+        if (!context.getSharedPreferences("app_state", Context.MODE_PRIVATE)
+                .contains("bold_text")) {
+            AppState.setBoldText(context, false);
+        }
+    }
+
+    /**
+     * A short report of what is ready and what is still missing, so the person
+     * knows exactly where things stand after "permitir todo".
+     */
+    static String readinessReport(Context context) {
+        StringBuilder report = new StringBuilder();
+        report.append(isDefaultSms(context) ? "✅" : "❌").append(" App SMS predeterminada\n");
+        report.append(hasSmsPermissions(context) ? "✅" : "❌").append(" Permisos de SMS\n");
+        report.append(hasNotificationPermission(context) ? "✅" : "❌")
+                .append(" Permiso de notificaciones\n");
+        report.append(notificationsEnabled(context) ? "✅" : "❌")
+                .append(" Notificaciones activadas\n");
+        report.append(hasContactsPermission(context) ? "✅" : "❌")
+                .append(" Permiso de contactos\n");
+        report.append(canScheduleExactAlarms(context) ? "✅" : "❌")
+                .append(" Alarmes exactas\n");
+        return report.toString();
+    }
+
     /** Short label for the inbox banner, or null when everything is configured. */
     static String bannerText(Context context) {
         if (!isDefaultSms(context)) return "No es la app SMS predeterminada.";
@@ -378,8 +450,9 @@ final class SetupHelper {
                 .apply();
         ThemedDialog.confirm(activity, "\uD83C\uDF89 Todo listo",
                 "Ajustes restringidos, permisos, notificaciones, alarmas y app predeterminada "
-                        + "est\u00e1n configurados correctamente.\n\n\u00bfQuieres comprobar "
-                        + "que el aviso de sonido suena?",
+                        + "est\u00e1n configurados correctamente.\n\n"
+                        + readinessReport(activity)
+                        + "\n\u00bfQuieres comprobar que el aviso de sonido suena?",
                 "Cerrar", "Probar sonido",
                 () -> NotificationHelper.showTest(activity));
     }
