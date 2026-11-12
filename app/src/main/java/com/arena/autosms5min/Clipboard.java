@@ -37,7 +37,7 @@ final class Clipboard {
     private static final Pattern SHORTENER = Pattern.compile(
             "(?:https?://)?(?:www\\.)?(?:bit\\.ly|tinyurl\\.com|t\\.co|t\\.ly|"
                     + "cutt\\.ly|is\\.gd|goo\\.gl|ow\\.ly|buff\\.ly|rebrand\\.ly|"
-                    + "shorturl\\.at|rb\\.gy|t\.me|lnkd\\.in)\\b[^\\s<>\"'()\\[\\]]*",
+                    + "shorturl\\.at|rb\\.gy|t\\.me|lnkd\\.in)\\b[^\\s<>\"'()\\[\\]]*",
             Pattern.CASE_INSENSITIVE);
 
     private Clipboard() { }
